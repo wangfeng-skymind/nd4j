@@ -19,17 +19,30 @@
 
 package org.nd4j.linalg.api.ops.impl.transforms.arithmetic;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
 import org.nd4j.linalg.api.ops.Op;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Division operation
+ * Reverse Division operation
  *
  * @author Adam Gibson
  */
 public class RDivOp extends BaseTransformOp {
+    public RDivOp(SameDiff sameDiff, DifferentialFunction i_v1, DifferentialFunction i_v2) {
+        super(sameDiff, i_v1, i_v2);
+    }
+
+    public RDivOp(SameDiff sameDiff, DifferentialFunction i_v1, DifferentialFunction i_v2, boolean inPlace) {
+        super(sameDiff, i_v1, i_v2, inPlace);
+    }
+
     public RDivOp() {}
 
     public RDivOp(INDArray x, INDArray y, INDArray z, long n) {
@@ -54,7 +67,7 @@ public class RDivOp extends BaseTransformOp {
 
     @Override
     public int opNum() {
-        return 7;
+        return 18;
     }
 
     @Override
@@ -133,4 +146,18 @@ public class RDivOp extends BaseTransformOp {
         if (y == null)
             throw new IllegalArgumentException("No components to divide");
     }
+
+
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction gradWrtX = f().div(i_v.get(0),larg());
+        DifferentialFunction gradWrtY = f().mul(f().neg(gradWrtX),f().div(rarg(),larg()));
+        List<DifferentialFunction> ret = new ArrayList<>(2);
+        ret.add(gradWrtX);
+        ret.add(gradWrtY);
+        return ret;
+    }
+
 }

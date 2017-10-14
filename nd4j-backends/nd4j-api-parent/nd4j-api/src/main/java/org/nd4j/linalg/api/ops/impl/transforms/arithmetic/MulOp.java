@@ -19,10 +19,15 @@
 
 package org.nd4j.linalg.api.ops.impl.transforms.arithmetic;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Multiplication operation
@@ -30,6 +35,14 @@ import org.nd4j.linalg.api.ops.Op;
  * @author Adam Gibson
  */
 public class MulOp extends BaseTransformOp {
+    public MulOp(SameDiff sameDiff, DifferentialFunction i_v1, DifferentialFunction i_v2) {
+        super(sameDiff, i_v1, i_v2);
+    }
+
+    public MulOp(SameDiff sameDiff, DifferentialFunction i_v1, DifferentialFunction i_v2, boolean inPlace) {
+        super(sameDiff, i_v1, i_v2, inPlace);
+    }
+
     public MulOp() {}
 
     public MulOp(INDArray x, INDArray y, INDArray z, long n) {
@@ -134,4 +147,18 @@ public class MulOp extends BaseTransformOp {
         if (y == null)
             throw new IllegalArgumentException("No components to multiply");
     }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction g = sameDiff.setupFunction(i_v.get(0));
+        DifferentialFunction gradWrtX = f().mul(g,rarg());
+        DifferentialFunction gradWrtY = f().mul(g,larg());
+        List<DifferentialFunction> ret = new ArrayList<>(2);
+        ret.add(gradWrtX);
+        ret.add(gradWrtY);
+        return ret;
+    }
+
+
 }

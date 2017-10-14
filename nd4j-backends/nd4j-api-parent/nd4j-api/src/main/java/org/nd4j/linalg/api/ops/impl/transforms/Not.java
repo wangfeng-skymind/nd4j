@@ -20,10 +20,14 @@
 package org.nd4j.linalg.api.ops.impl.transforms;
 
 import lombok.NonNull;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Boolean AND pairwise transform
@@ -32,7 +36,22 @@ import org.nd4j.linalg.api.ops.Op;
  */
 public class Not extends BaseTransformOp {
 
-    protected double comparable;
+    protected double comparable = 0.0;
+
+    public Not(SameDiff sameDiff, DifferentialFunction i_v, boolean inPlace, double comparable) {
+        super(sameDiff, i_v, inPlace);
+        this.comparable = comparable;
+    }
+
+    public Not(SameDiff sameDiff, DifferentialFunction i_v, int[] shape, boolean inPlace, Object[] extraArgs, double comparable) {
+        super(sameDiff, i_v, shape, inPlace, extraArgs);
+        this.comparable = comparable;
+    }
+
+    public Not(SameDiff sameDiff, DifferentialFunction i_v, Object[] extraArgs, double comparable) {
+        super(sameDiff, i_v, extraArgs);
+        this.comparable = comparable;
+    }
 
     public Not() {}
 
@@ -125,5 +144,10 @@ public class Not extends BaseTransformOp {
         INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
         return new Not(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
 
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

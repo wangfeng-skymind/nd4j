@@ -29,6 +29,10 @@ import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.transforms.*;
+import org.nd4j.linalg.api.ops.impl.transforms.SigmoidDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.SoftMaxDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.TanhDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.*;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.factory.Nd4jBackend;
 import org.nd4j.linalg.ops.transforms.Transforms;
@@ -101,7 +105,7 @@ public class DerivativeTests extends BaseNd4jTest {
         }
 
         INDArray zPrime = Nd4j.getExecutioner()
-                        .execAndReturn(Nd4j.getOpFactory().createTransform("relu",z).derivative());
+                        .execAndReturn(Nd4j.getOpFactory().createTransform("relu", z).derivative());
 
         for (int i = 0; i < 100; i++) {
             assertTrue(expOut[i] == zPrime.getDouble(i));

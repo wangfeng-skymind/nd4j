@@ -28,6 +28,7 @@ import org.nd4j.linalg.api.rng.Random;
 import org.nd4j.linalg.cache.TADManager;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -82,7 +83,6 @@ public interface OpExecutioner {
 
 
 
-
     /**
      * Execute and return the result from an accumulation
      *
@@ -115,6 +115,10 @@ public interface OpExecutioner {
     /** Execute and return the result from a vector op
      * @param op*/
     INDArray execAndReturn(BroadcastOp op);
+
+    /** Execute and return the result from a vector op
+     * @param op*/
+    INDArray execAndReturn(ShapeOp op);
 
 
     /**Execute the operation along 1 or more dimensions
@@ -158,7 +162,9 @@ public interface OpExecutioner {
 
 
 
-    /**Execute and return  a result
+    /**
+     *
+     * Execute and return  a result
      * ndarray from the given op
      * @param op the operation to execute
      * @return the result from the operation
@@ -167,7 +173,7 @@ public interface OpExecutioner {
 
 
     /**Get the execution mode for this
-     * execuioner
+     * executioner
      * @return the execution mode for this executioner
      */
     ExecutionMode executionMode();
@@ -190,8 +196,17 @@ public interface OpExecutioner {
      */
     void exec(GridOp op);
 
-
+    /**
+     *
+     * @param op
+     */
     void exec(Aggregate op);
+
+    /**
+     *
+     * @param op
+     */
+    void exec(ShapeOp op);
 
     /**
      * This method executes previously built batch
@@ -201,7 +216,8 @@ public interface OpExecutioner {
     <T extends Aggregate> void exec(Batch<T> batch);
 
     /**
-     * This method takes abritrary sized list of aggregates, and packs them into batches
+     * This method takes arbitrary sized list of aggregates,
+     * and packs them into batches
      *
      * @param batch
      */
@@ -304,7 +320,35 @@ public interface OpExecutioner {
      */
     long bitmapEncode(INDArray indArray, INDArray target, double threshold);
 
+    /**
+     *
+     * @param indArray
+     * @param threshold
+     * @return
+     */
     INDArray bitmapEncode(INDArray indArray, double threshold);
 
+    /**
+     *
+     * @param encoded
+     * @param target
+     * @return
+     */
     INDArray bitmapDecode(INDArray encoded, INDArray target);
+
+    /**
+     * This method returns names of all custom operations available in current backend, and their number of input/output arguments
+     * @return
+     */
+    Map<String, CustomOpDescriptor> getCustomOperations();
+
+    /**
+     * This method executes given CustomOp
+     *
+     * PLEASE NOTE: You're responsible for input/output validation
+     * @param op
+     */
+    void exec(CustomOp op);
+
+    List<int[]> calculateOutputShape(CustomOp op);
 }

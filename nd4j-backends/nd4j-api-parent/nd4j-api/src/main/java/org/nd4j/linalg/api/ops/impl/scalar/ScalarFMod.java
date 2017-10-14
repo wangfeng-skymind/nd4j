@@ -12,10 +12,13 @@
 
 package org.nd4j.linalg.api.ops.impl.scalar;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseScalarOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Scalar floating-point remainder (fmod)
@@ -113,5 +116,11 @@ public class ScalarFMod extends BaseScalarOp {
             return new ScalarFMod(x.tensorAlongDimension(index, dimension), num);
         else
             return new ScalarFMod(x.tensorAlongDimension(index, dimension), complexNumber);
+    }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        throw new UnsupportedOperationException();
     }
 }

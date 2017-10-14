@@ -19,6 +19,7 @@
 
 package org.nd4j.linalg.api.ndarray;
 
+import org.nd4j.linalg.api.blas.params.MMulTranspose;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.complex.IComplexNDArray;
 import org.nd4j.linalg.api.complex.IComplexNumber;
@@ -50,6 +51,12 @@ public interface INDArray extends Serializable {
     DataBuffer shapeInfoDataBuffer();
 
     /**
+     * Sparse info
+     * @return
+     */
+    DataBuffer sparseInfoDataBuffer();
+
+    /**
      * Shape info
      * @return
      */
@@ -60,6 +67,12 @@ public interface INDArray extends Serializable {
      * @return
      */
     boolean isView();
+
+    /**
+     * Returns true if this array is sparse
+     * @return
+     */
+    boolean isSparse();
 
     /**
      * Returns true if this array is compressed, and false otherwise
@@ -1295,6 +1308,8 @@ public interface INDArray extends Serializable {
      */
     INDArray addRowVector(INDArray rowVector);
 
+    INDArray mmul(INDArray other, MMulTranspose mMulTranspose);
+
     /**
      * Perform a copy matrix multiplication
      *
@@ -1313,6 +1328,15 @@ public interface INDArray extends Serializable {
      */
     INDArray mmul(INDArray other, INDArray result);
 
+    /**
+     * Perform an copy matrix multiplication
+     *
+     * @param other  the other matrix to perform matrix multiply with
+     * @param result the result ndarray
+     * @param mMulTranspose the transpose status of each array
+     * @return the result of the matrix multiplication
+     */
+    INDArray mmul(INDArray other, INDArray result,MMulTranspose mMulTranspose);
 
     /**
      * Copy (element wise) division of two NDArrays
@@ -1384,6 +1408,8 @@ public interface INDArray extends Serializable {
     INDArray add(INDArray other, INDArray result);
 
 
+    INDArray mmuli(INDArray other, MMulTranspose transpose);
+
     /**
      * Perform an inplace matrix multiplication
      *
@@ -1392,6 +1418,8 @@ public interface INDArray extends Serializable {
      */
     INDArray mmuli(INDArray other);
 
+
+    INDArray mmuli(INDArray other, INDArray result, MMulTranspose transpose);
 
     /**
      * Perform an inplace matrix multiplication
@@ -1830,6 +1858,7 @@ public interface INDArray extends Serializable {
      * @return the sub array based on the calculations from the resolution
      */
     INDArray subArray(ShapeOffsetResolution resolution);
+    //INDArray subArray(ShapeOffsetResolution resolution, ShapeOffsetResolution resolutionWithoutNewAxis);
 
     /**
      * @param offsets
@@ -2615,11 +2644,11 @@ public interface INDArray extends Serializable {
     INDArray migrate();
 
     /**
-     * This method returns percentile value for this INDArray
-     *
-     * @param percentile target percentile in range of 0..100
-     * @return
-     */
+       * This method returns percentile value for this INDArray
+       *
+       * @param percentile target percentile in range of 0..100
+       * @return
+       */
     Number percentileNumber(Number percentile);
 
     /**
@@ -2643,4 +2672,45 @@ public interface INDArray extends Serializable {
      * @return
      */
     INDArray percentile(Number percentile, int... dimension);
+
+    /**
+     * ------------ Sparse methods ------------
+     */
+
+
+    /**
+     * Return a array of non-major pointers
+     * i.e. return the column indexes in case of row-major ndarray
+     * @return a DataBuffer of indexes
+     * */
+    DataBuffer getVectorCoordinates();
+
+    /**
+     * Return a dense representation of the sparse ndarray
+     * */
+    INDArray toDense();
+
+    /**
+     * Return the number of non-null element
+     * @return nnz
+     * */
+    int nnz();
+
+    /**
+     * Return the sparse format (i.e COO, CSR, ...)
+     * @return format
+     * @see SparseFormat
+     * */
+    SparseFormat getFormat();
+
+    int[] flags();
+
+    int[] hiddenDimensions();
+
+    int[] sparseOffsets();
+
+    int underlyingRank();
+
+
+
 }

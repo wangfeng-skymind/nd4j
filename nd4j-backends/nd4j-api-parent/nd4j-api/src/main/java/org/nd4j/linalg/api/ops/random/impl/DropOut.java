@@ -20,8 +20,11 @@
 package org.nd4j.linalg.api.ops.random.impl;
 
 import lombok.NonNull;
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.random.BaseRandomOp;
+
+import java.util.List;
 
 /**
  * Inverted DropOut implementation as Op
@@ -64,5 +67,11 @@ public class DropOut extends BaseRandomOp {
     public void init(INDArray x, INDArray y, INDArray z, long n) {
         super.init(x, y, z, n);
         this.extraArgs = new Object[] {p, (double) n};
+    }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

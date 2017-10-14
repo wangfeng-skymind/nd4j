@@ -20,12 +20,16 @@
 package org.nd4j.linalg.api.ops.impl.shape;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.BaseOp;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.api.ops.ShapeOp;
 import org.nd4j.linalg.util.ComplexUtil;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Transpose function
@@ -33,6 +37,9 @@ import org.nd4j.linalg.util.ComplexUtil;
  * @author Adam Gibson
  */
 public class Transpose extends ShapeOp {
+    public Transpose(SameDiff sameDiff, DifferentialFunction i_v) {
+        super(sameDiff, i_v, false);
+    }
 
     public Transpose() {}
 
@@ -52,6 +59,27 @@ public class Transpose extends ShapeOp {
         super(x);
     }
 
+
+    @Override
+    public void exec(int... dimensions) {
+        exec();
+    }
+
+    @Override
+    public boolean isExecSpecial() {
+        return true;
+    }
+
+    @Override
+    public void exec() {
+        if(x != z) {
+            z.assign(x.transpose());
+        }
+        else {
+            this.z = x.transpose();
+        }
+
+    }
 
     @Override
     public int opNum() {
@@ -109,7 +137,7 @@ public class Transpose extends ShapeOp {
 
         if (y() != null)
             return new Transpose(xAlongDimension, y.vectorAlongDimension(index, dimension),
-                            z.vectorAlongDimension(index, dimension), xAlongDimension.length());
+                    z.vectorAlongDimension(index, dimension), xAlongDimension.length());
         else
             return new Transpose(xAlongDimension, z.vectorAlongDimension(index, dimension), xAlongDimension.length());
 
@@ -117,7 +145,9 @@ public class Transpose extends ShapeOp {
 
     @Override
     public INDArray z() {
-        return x().transpose();
+        if(x() != null)
+            return x().transpose();
+        return null;
     }
 
     @Override
@@ -126,9 +156,15 @@ public class Transpose extends ShapeOp {
 
         if (y() != null)
             return new Transpose(xAlongDimension, y.tensorAlongDimension(index, dimension),
-                            z.tensorAlongDimension(index, dimension), xAlongDimension.length());
+                    z.tensorAlongDimension(index, dimension), xAlongDimension.length());
         else
             return new Transpose(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
 
     }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        return Collections.<DifferentialFunction>singletonList(this);
+    }
+
 }

@@ -19,12 +19,13 @@
 
 package org.nd4j.linalg.api.ops.impl.transforms;
 
-import org.apache.commons.math3.util.FastMath;
-import org.nd4j.linalg.api.complex.IComplexNumber;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
-import org.nd4j.linalg.api.ops.Op;
-import org.nd4j.linalg.util.ComplexUtil;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Arc Tangent elementwise function
@@ -32,6 +33,18 @@ import org.nd4j.linalg.util.ComplexUtil;
  * @author Adam Gibson
  */
 public class ATan extends BaseTransformOp {
+    public ATan(SameDiff sameDiff, DifferentialFunction i_v, boolean inPlace) {
+        super(sameDiff, i_v, inPlace);
+    }
+
+    public ATan(SameDiff sameDiff, DifferentialFunction i_v, int[] shape, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, shape, inPlace, extraArgs);
+    }
+
+    public ATan(SameDiff sameDiff, DifferentialFunction i_v, Object[] extraArgs) {
+        super(sameDiff, i_v, extraArgs);
+    }
+
     public ATan() {}
 
     public ATan(INDArray x, INDArray z) {
@@ -61,66 +74,10 @@ public class ATan extends BaseTransformOp {
     }
 
     @Override
-    public IComplexNumber op(IComplexNumber origin, double other) {
-        return ComplexUtil.atan(origin);
-    }
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction ret = f().div(f().one(getResultShape()),
+                f().sqrt(f().sub(f().one(getResultShape()),f().pow(arg(),2))));
 
-    @Override
-    public IComplexNumber op(IComplexNumber origin, float other) {
-        return ComplexUtil.atan(origin);
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin, IComplexNumber other) {
-        return ComplexUtil.atan(origin);
-    }
-
-    @Override
-    public float op(float origin, float other) {
-        return (float) FastMath.atan(origin);
-    }
-
-    @Override
-    public double op(double origin, double other) {
-        return FastMath.atan(origin);
-    }
-
-    @Override
-    public double op(double origin) {
-        return FastMath.atan(origin);
-    }
-
-    @Override
-    public float op(float origin) {
-        return (float) FastMath.atan(origin);
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin) {
-        return ComplexUtil.atan(origin);
-    }
-
-    @Override
-    public Op opForDimension(int index, int dimension) {
-        INDArray xAlongDimension = x.vectorAlongDimension(index, dimension);
-
-        if (y() != null)
-            return new ATan(xAlongDimension, y.vectorAlongDimension(index, dimension),
-                            z.vectorAlongDimension(index, dimension), xAlongDimension.length());
-        else
-            return new ATan(xAlongDimension, z.vectorAlongDimension(index, dimension), x.lengthLong());
-
-    }
-
-    @Override
-    public Op opForDimension(int index, int... dimension) {
-        INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
-
-        if (y() != null)
-            return new ATan(xAlongDimension, y.tensorAlongDimension(index, dimension),
-                            z.tensorAlongDimension(index, dimension), xAlongDimension.length());
-        else
-            return new ATan(xAlongDimension, z.tensorAlongDimension(index, dimension), x.lengthLong());
-
+        return Collections.singletonList(ret);
     }
 }

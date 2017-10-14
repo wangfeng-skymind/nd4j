@@ -19,10 +19,15 @@
 
 package org.nd4j.linalg.api.ops.impl.scalar;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseScalarOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Scalar reverse subtraction
@@ -47,6 +52,22 @@ public class ScalarReverseSubtraction extends BaseScalarOp {
 
     public ScalarReverseSubtraction(INDArray x, IComplexNumber num) {
         super(x, num);
+    }
+
+    public ScalarReverseSubtraction(SameDiff sameDiff, DifferentialFunction i_v, Number scalar) {
+        super(sameDiff, i_v, scalar);
+    }
+
+    public ScalarReverseSubtraction(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace) {
+        super(sameDiff, i_v, scalar, inPlace);
+    }
+
+    public ScalarReverseSubtraction(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, inPlace, extraArgs);
+    }
+
+    public ScalarReverseSubtraction(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, extraArgs);
     }
 
     @Override
@@ -122,4 +143,13 @@ public class ScalarReverseSubtraction extends BaseScalarOp {
         else
             return new ScalarReverseSubtraction(x.tensorAlongDimension(index, dimension), complexNumber);
     }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        DifferentialFunction g = f().neg(i_v1.get(0));
+
+        return Arrays.asList(g);
+    }
+
 }

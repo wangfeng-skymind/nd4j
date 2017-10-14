@@ -10,8 +10,8 @@
     <name>nd4j-native</name>
 
     <properties>
-        <openblas.version>0.2.19</openblas.version>
-        <env.LIBND4J_HOME>${basedir}/../../../../libnd4j/</env.LIBND4J_HOME>
+        <openblas.version>0.2.20</openblas.version>
+        <mkl.version>2017.3</mkl.version>
     </properties>
 
     <dependencies>
@@ -22,7 +22,6 @@
             <type>${dependency.packaging}</type>
             <classifier>${dependency.classifier}</classifier>
         </dependency>
-
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacpp</artifactId>
@@ -37,6 +36,17 @@
             <groupId>org.bytedeco.javacpp-presets</groupId>
             <artifactId>openblas</artifactId>
             <version>${openblas.version}-${javacpp-presets.version}</version>
+            <classifier>${dependency.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco.javacpp-presets</groupId>
+            <artifactId>mkl</artifactId>
+            <version>${mkl.version}-${javacpp-presets.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco.javacpp-presets</groupId>
+            <artifactId>mkl</artifactId>
+            <version>${mkl.version}-${javacpp-presets.version}</version>
             <classifier>${dependency.platform}</classifier>
         </dependency>
 
@@ -145,7 +155,11 @@
                     <includePaths>
                         <includePath>${env.LIBND4J_HOME}/blas</includePath>
                         <includePath>${env.LIBND4J_HOME}/include</includePath>
+                        <includePath>${env.LIBND4J_HOME}/include/helpers</includePath>
+                        <includePath>${env.LIBND4J_HOME}/include/memory</includePath>
+                        <includePath>${env.LIBND4J_HOME}/include/graph</includePath>
                         <includePath>${env.LIBND4J_HOME}/include/cnpy</includePath>
+                        <includePath>${env.LIBND4J_HOME}/include/indexing</includePath>
                     </includePaths>
                     <linkPath>${env.LIBND4J_HOME}/blasbuild/cpu/blas</linkPath>
                 </configuration>

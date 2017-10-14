@@ -1,8 +1,11 @@
 package org.nd4j.linalg.api.ops.random.impl;
 
 import lombok.NonNull;
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.random.BaseRandomOp;
+
+import java.util.List;
 
 /**
  * @author raver119@gmail.com
@@ -52,5 +55,10 @@ public class UniformDistribution extends BaseRandomOp {
     @Override
     public String name() {
         return "distribution_uniform";
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

@@ -19,10 +19,14 @@
 
 package org.nd4j.linalg.api.ops.impl.scalar;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseScalarOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Scalar max operation.
@@ -44,6 +48,22 @@ public class ScalarSet extends BaseScalarOp {
 
     public ScalarSet(INDArray x, INDArray y, INDArray z, long n, IComplexNumber num) {
         super(x, y, z, n, num);
+    }
+
+    public ScalarSet(SameDiff sameDiff, DifferentialFunction i_v, Number scalar) {
+        super(sameDiff, i_v, scalar);
+    }
+
+    public ScalarSet(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace) {
+        super(sameDiff, i_v, scalar, inPlace);
+    }
+
+    public ScalarSet(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, inPlace, extraArgs);
+    }
+
+    public ScalarSet(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, extraArgs);
     }
 
     public ScalarSet(INDArray x, IComplexNumber num) {
@@ -130,4 +150,11 @@ public class ScalarSet extends BaseScalarOp {
         }
 
     }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        throw new UnsupportedOperationException();
+    }
+
 }

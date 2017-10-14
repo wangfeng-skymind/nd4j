@@ -20,12 +20,16 @@
 package org.nd4j.linalg.api.ops.impl.indexaccum;
 
 import lombok.NonNull;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseIndexAccumulation;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.conditions.Condition;
+
+import java.util.List;
 
 /**
  * Calculate the index
@@ -38,6 +42,22 @@ public class FirstIndex extends BaseIndexAccumulation {
     protected double compare;
     protected double eps;
     protected int mode;
+
+    public FirstIndex(SameDiff sameDiff, DifferentialFunction i_v, int[] dimensions, Condition condition, double compare, double eps, int mode) {
+        super(sameDiff, i_v, dimensions);
+        this.condition = condition;
+        this.compare = compare;
+        this.eps = eps;
+        this.mode = mode;
+    }
+
+    public FirstIndex(SameDiff sameDiff, DifferentialFunction i_v, DifferentialFunction i_v2, int[] dimensions, Condition condition, double compare, double eps, int mode) {
+        super(sameDiff, i_v, i_v2, dimensions);
+        this.condition = condition;
+        this.compare = compare;
+        this.eps = eps;
+        this.mode = mode;
+    }
 
     public FirstIndex() {}
 
@@ -182,5 +202,10 @@ public class FirstIndex extends BaseIndexAccumulation {
         INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
 
         return new FirstIndex(x.tensorAlongDimension(index, dimension), condition, eps);
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

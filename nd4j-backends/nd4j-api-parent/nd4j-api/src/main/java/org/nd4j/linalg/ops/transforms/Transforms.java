@@ -30,6 +30,10 @@ import org.nd4j.linalg.api.ops.impl.scalar.ScalarMin;
 import org.nd4j.linalg.api.ops.impl.transforms.*;
 import org.nd4j.linalg.api.ops.impl.transforms.arithmetic.Atan2Op;
 import org.nd4j.linalg.api.ops.impl.transforms.comparison.*;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.ELUDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.HardTanhDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.LeakyReLUDerivative;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.SoftSignDerivative;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.inverse.InvertMatrix;
 
@@ -58,17 +62,17 @@ public class Transforms {
 
     public static double cosineDistance(@NonNull INDArray d1, @NonNull INDArray d2) {
         return Nd4j.getExecutioner().execAndReturn(new CosineDistance(d1, d2, d1.length())).getFinalResult()
-                .doubleValue();
+                        .doubleValue();
     }
 
     public static double hammingDistance(@NonNull INDArray d1, @NonNull INDArray d2) {
         return Nd4j.getExecutioner().execAndReturn(new HammingDistance(d1, d2, d1.length())).getFinalResult()
-                .doubleValue();
+                        .doubleValue();
     }
 
     public static double jaccardDistance(@NonNull INDArray d1, @NonNull INDArray d2) {
         return Nd4j.getExecutioner().execAndReturn(new JaccardDistance(d1, d2, d1.length())).getFinalResult()
-                .doubleValue();
+                        .doubleValue();
     }
 
     public static INDArray allCosineSimilarities(@NonNull INDArray d1, @NonNull INDArray d2, int... dimensions) {
@@ -89,7 +93,8 @@ public class Transforms {
 
 
     public static INDArray reverse(INDArray x, boolean dup) {
-        return Nd4j.getExecutioner().exec(new Reverse(x, dup ? Nd4j.createUninitialized(x.shape(), x.ordering()): x)).z();
+        return Nd4j.getExecutioner().exec(new Reverse(x, dup ? Nd4j.createUninitialized(x.shape(), x.ordering()) : x))
+                        .z();
     }
 
     /**
@@ -110,7 +115,8 @@ public class Transforms {
      * @return
      */
     public static INDArray atan2(@NonNull INDArray x, @NonNull INDArray y) {
-        return Nd4j.getExecutioner().execAndReturn(new Atan2Op(x, y, Nd4j.createUninitialized(x.shape(), x.ordering())));
+        return Nd4j.getExecutioner()
+                        .execAndReturn(new Atan2Op(x, y, Nd4j.createUninitialized(x.shape(), x.ordering())));
     }
 
     /**
@@ -403,22 +409,22 @@ public class Transforms {
 
 
 
-    public static INDArray leakyRelu(INDArray arr,double cutoff) {
-        return leakyRelu(arr,cutoff, Nd4j.copyOnOps);
+    public static INDArray leakyRelu(INDArray arr, double cutoff) {
+        return leakyRelu(arr, cutoff, Nd4j.copyOnOps);
     }
 
 
-    public static INDArray leakyRelu(INDArray in, double cutoff,boolean copy) {
-        return Nd4j.getExecutioner().execAndReturn(new LeakyReLU((copy ? in.dup() : in),cutoff));
+    public static INDArray leakyRelu(INDArray in, double cutoff, boolean copy) {
+        return Nd4j.getExecutioner().execAndReturn(new LeakyReLU((copy ? in.dup() : in), cutoff));
     }
 
-    public static INDArray leakyReluDerivative(INDArray arr,double cutoff) {
-        return leakyReluDerivative(arr,cutoff, Nd4j.copyOnOps);
+    public static INDArray leakyReluDerivative(INDArray arr, double cutoff) {
+        return leakyReluDerivative(arr, cutoff, Nd4j.copyOnOps);
     }
 
 
-    public static INDArray leakyReluDerivative(INDArray in, double cutoff,boolean copy) {
-        return Nd4j.getExecutioner().execAndReturn(new LeakyReLUDerivative((copy ? in.dup() : in),cutoff));
+    public static INDArray leakyReluDerivative(INDArray in, double cutoff, boolean copy) {
+        return Nd4j.getExecutioner().execAndReturn(new LeakyReLUDerivative((copy ? in.dup() : in), cutoff));
     }
 
 
@@ -468,12 +474,18 @@ public class Transforms {
     }
 
 
+    /**
+     *
+     * @param in
+     * @param copy
+     * @return
+     */
     public static INDArray softmax(INDArray in, boolean copy) {
         return Nd4j.getExecutioner().execAndReturn(new SoftMax(((copy ? in.dup() : in))));
     }
 
     /**
-     * Abs funciton
+     * Abs function
      *
      * @param ndArray
      * @return
@@ -483,6 +495,11 @@ public class Transforms {
     }
 
 
+    /**
+     * Run the exp operation
+     * @param ndArray
+     * @return
+     */
     public static INDArray exp(INDArray ndArray) {
         return exp(ndArray, Nd4j.copyOnOps);
     }
@@ -554,7 +571,7 @@ public class Transforms {
      * @return the ndarray raised to this power
      */
     public static INDArray pow(INDArray ndArray, INDArray power) {
-        return exec(new Pow(ndArray,power,ndArray,ndArray.length(),0));
+        return exec(new Pow(ndArray, power, ndArray, ndArray.length(), 0));
 
     }
 
@@ -1026,29 +1043,38 @@ public class Transforms {
     public static INDArray mpow(INDArray in, int n, boolean dup) {
         assert in.rows() == in.columns();
         if (n == 0) {
-            if (dup) return Nd4j.eye(in.rows());
-            else return in.assign(Nd4j.eye(in.rows()));
+            if (dup)
+                return Nd4j.eye(in.rows());
+            else
+                return in.assign(Nd4j.eye(in.rows()));
         }
         INDArray temp;
         if (n < 0) {
             temp = InvertMatrix.invert(in, !dup);
             n = -n;
-        } else temp = in.dup();
+        } else
+            temp = in.dup();
         INDArray result = temp.dup();
         if (n < 4) {
             for (int i = 1; i < n; i++) {
                 result.mmuli(temp);
             }
-            if (dup) return result;
-            else return in.assign(result);
+            if (dup)
+                return result;
+            else
+                return in.assign(result);
         } else {
             // lets try to optimize by squaring itself a bunch of times
-            int squares = (int)(Math.log(n)/Math.log(2.0));
-            for (int i = 0; i < squares; i++) result = result.mmul(result);
-            int diff = (int)Math.round(n-Math.pow(2.0,squares));
-            for (int i = 0; i < diff; i++) result.mmuli(temp);
-            if (dup) return result;
-            else return in.assign(result);
+            int squares = (int) (Math.log(n) / Math.log(2.0));
+            for (int i = 0; i < squares; i++)
+                result = result.mmul(result);
+            int diff = (int) Math.round(n - Math.pow(2.0, squares));
+            for (int i = 0; i < diff; i++)
+                result.mmuli(temp);
+            if (dup)
+                return result;
+            else
+                return in.assign(result);
         }
     }
 

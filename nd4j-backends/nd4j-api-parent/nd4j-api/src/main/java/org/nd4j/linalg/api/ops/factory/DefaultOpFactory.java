@@ -19,24 +19,22 @@
 
 package org.nd4j.linalg.api.ops.factory;
 
+import lombok.extern.slf4j.Slf4j;
+import org.nd4j.linalg.api.blas.params.MMulTranspose;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.*;
-import org.nd4j.linalg.api.ops.impl.accum.*;
-import org.nd4j.linalg.api.ops.impl.accum.distances.CosineSimilarity;
-import org.nd4j.linalg.api.ops.impl.accum.distances.EuclideanDistance;
-import org.nd4j.linalg.api.ops.impl.accum.distances.ManhattanDistance;
-import org.nd4j.linalg.api.ops.impl.broadcast.*;
-import org.nd4j.linalg.api.ops.impl.indexaccum.IAMax;
-import org.nd4j.linalg.api.ops.impl.indexaccum.IMax;
-import org.nd4j.linalg.api.ops.impl.indexaccum.IMin;
-import org.nd4j.linalg.api.ops.impl.scalar.*;
-import org.nd4j.linalg.api.ops.impl.scalar.comparison.*;
+import org.nd4j.linalg.api.ops.impl.accum.Mmul;
+import org.nd4j.linalg.api.ops.impl.accum.StandardDeviation;
+import org.nd4j.linalg.api.ops.impl.accum.TensorMmul;
+import org.nd4j.linalg.api.ops.impl.accum.Variance;
 import org.nd4j.linalg.api.ops.impl.shape.Broadcast;
 import org.nd4j.linalg.api.ops.impl.shape.Permute;
 import org.nd4j.linalg.api.ops.impl.shape.Reshape;
 import org.nd4j.linalg.api.ops.impl.shape.Transpose;
-import org.nd4j.linalg.api.ops.impl.transforms.*;
-import org.nd4j.linalg.api.ops.impl.transforms.arithmetic.*;
+import org.nd4j.linalg.api.ops.impl.transforms.Pow;
+import org.nd4j.linalg.api.ops.impl.transforms.RectifedLinear;
+import org.nd4j.linalg.api.ops.impl.transforms.Step;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.SoftMaxDerivative;
 import org.nd4j.linalg.exception.ND4JIllegalStateException;
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
@@ -56,6 +54,7 @@ import java.util.Set;
  *
  * @author Adam Gibson
  */
+@Slf4j
 public class DefaultOpFactory implements OpFactory {
     private Map<String, Class<? extends Op>> opClazzes;
 
@@ -77,10 +76,30 @@ public class DefaultOpFactory implements OpFactory {
                 continue;
 
             try {
-                opClazzes.put(clazz.newInstance().name(), clazz);
+                String name = clazz.newInstance().name();
+                if (opClazzes.containsKey(name)) {
+                    throw new ND4JIllegalStateException("OpName duplicate found: " + name);
+                } else
+                    opClazzes.put(name, clazz);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+
+    @Override
+    public GradientOp createGradientOp(String name, INDArray x, INDArray y, INDArray z) {
+        switch(name) {
+            case "softmaxderivative":
+                return new SoftMaxDerivative(x,y,z);
+            case "sigmoidderivative":
+                return new org.nd4j.linalg.api.ops.impl.transforms.gradient.SigmoidDerivative(x,y,z);
+            case "tanhderivative":
+                return new org.nd4j.linalg.api.ops.impl.transforms.gradient.TanhDerivative(x,y,z);
+            case "gradientbackwards":
+            return new org.nd4j.linalg.api.ops.impl.transforms.gradient.GradientBackwardsMarker(x,y,z);
+            default: throw new IllegalStateException("Illegal name " + name);
         }
     }
 
@@ -92,14 +111,21 @@ public class DefaultOpFactory implements OpFactory {
      * @return
      */
     @Override
-    public Op createShape(String name, INDArray x, INDArray z) {
-        switch(name) {
+    public Op createShape(String name, INDArray x, INDArray z, Object[] extraArgs) {
+            if (!opClazzes.containsKey(name))
+                throw new ND4JIllegalStateException("Unknown Op requested: " + name);
+
+            switch(name) {
             case "transpose":
                 return new Transpose(x,z);
             case "reshape":
-                return new Reshape(x,z);
+                Reshape ret2 = new Reshape(x,z);
+                ret2.setExtraArgs(extraArgs);
+                return ret2;
             case "permute":
-                return new Permute(x,z);
+                Permute ret = new Permute(x,z,x.lengthLong());
+                ret.setExtraArgs(extraArgs);
+                return ret;
             case "broadcast":
                 return new Broadcast(x,z);
         }
@@ -138,7 +164,41 @@ public class DefaultOpFactory implements OpFactory {
                                     INDArray y,
                                     INDArray z,
                                     Object[] extraArgs) {
+        if (!opClazzes.containsKey(name))
+            throw new ND4JIllegalStateException("Unknown Op requested: " + name);
+
         Accumulation ret = null;
+
+        switch (name) {
+            case "mmul":
+                //of note here is that it's always the last arg
+                /*
+                 * The case to watch out for here is
+                 * tensor matrix multiply which has an args format of:
+                 * dimensions, mmul transpose
+                 */
+
+                MMulTranspose mMulTranspose = extraArgs != null  && extraArgs.length >= 1 ? (MMulTranspose) extraArgs[extraArgs.length - 1] : MMulTranspose.allFalse();
+                ret = new Mmul(x,y,z,mMulTranspose);
+                break;
+            case "std":
+                ret = new StandardDeviation(x, y,z, x.length(),(boolean) extraArgs[0]);
+                break;
+            case "var":
+                ret = new Variance(x, y, z, x.length(),(boolean) extraArgs[0]);
+                break;
+            case "tensorMmul":
+                ret = new TensorMmul(x, y,z,(int[][]) extraArgs[0]);
+                break;
+            default:
+                try {
+                    ret = (Accumulation) opClazzes.get(name).getConstructor(INDArray.class, INDArray.class, INDArray.class, long.class).newInstance(x, y, z, x.length());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+        }
+
+        /*
         switch (name) {
 
             case "sum":
@@ -172,18 +232,27 @@ public class DefaultOpFactory implements OpFactory {
             case "cosinesimilarity":
                 ret = new CosineSimilarity(x, y,z, x.length());
                 break;
+            case "cosinedistance":
+                ret = new CosineDistance(x,y,z,x.lengthLong());
+                break;
             case "manhattan":
                 ret = new ManhattanDistance(x, y,z, x.length());
                 break;
             case "mmul":
-                ret = new Mmul(x, y,z, x.length());
+                //of note here is that it's always the last arg
+
+                 * The case to watch out for here is
+                 * tensor matrix multiply which has an args format of:
+                 * dimensions, mmul transpose
+
+                MMulTranspose mMulTranspose = extraArgs != null  && extraArgs.length >= 1 ? (MMulTranspose) extraArgs[extraArgs.length - 1] : MMulTranspose.allFalse();
+                ret = new Mmul(x,y,z,mMulTranspose);
                 break;
             case "tensorMmul":
                 ret = new TensorMmul(x, y,z,(int[][]) extraArgs[0]);
                 break;
-
-
         }
+        */
 
         if(ret == null)
             throw new IllegalArgumentException("Illegal operation name " + name);
@@ -208,7 +277,18 @@ public class DefaultOpFactory implements OpFactory {
      */
     @Override
     public IndexAccumulation createIndexAccum(String opName, INDArray x, INDArray y, INDArray z, Object[] extraArgs) {
+        if (!opClazzes.containsKey(opName))
+            throw new ND4JIllegalStateException("Unknown Op requested: " + opName);
+
         IndexAccumulation ret = null;
+
+        try {
+            ret = (IndexAccumulation) opClazzes.get(opName).getConstructor(INDArray.class, INDArray.class).newInstance(x, y);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        /*
         switch (opName) {
             case "iamax":
                 ret = new IAMax(x,y);
@@ -220,6 +300,7 @@ public class DefaultOpFactory implements OpFactory {
                 ret = new IMin(x,y);
                 break;
         }
+        */
 
         ret.setExtraArgs(extraArgs);
         return ret;
@@ -271,7 +352,40 @@ public class DefaultOpFactory implements OpFactory {
                                        INDArray y,
                                        INDArray z,
                                        Object[] extraArgs) {
+        if (!opClazzes.containsKey(name))
+            throw new ND4JIllegalStateException("Unknown Op requested: " + name);
+
         TransformOp op = null;
+
+        switch (name) {
+            case "_softmaxderivative":
+                op = new org.nd4j.linalg.api.ops.impl.transforms.SoftMaxDerivative(x, z);
+                break;
+            case "set":
+                op = new org.nd4j.linalg.api.ops.impl.transforms.Set(x,y,z,z.length());
+                break;
+            case "relu":
+                op = new RectifedLinear(x, z, x.length(),extraArgs == null || extraArgs[0] == null ? 0.0 : (double) extraArgs[0]);
+                break;
+            case "step":
+                op = new Step(x,y,z,x.length(),extraArgs == null || extraArgs[0] == null  ? 0.0 : (double) extraArgs[0]);
+                break;
+            case "pow":
+                op = new Pow(x, z, (double) extraArgs[0]);
+                break;
+            default:
+                try {
+                    if (y == null)
+                        op = (TransformOp) opClazzes.get(name).getConstructor(INDArray.class, INDArray.class).newInstance(x, z);
+                    else
+                        op = (TransformOp) opClazzes.get(name).getConstructor(INDArray.class, INDArray.class, INDArray.class).newInstance(x, y, z);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+        }
+
+        /*
+
         switch (name) {
             case "set":
                 op = new org.nd4j.linalg.api.ops.impl.transforms.Set(x,y,z,z.length());
@@ -366,6 +480,9 @@ public class DefaultOpFactory implements OpFactory {
             case "timesoneminus":
                 op = new TimesOneMinus(x, z);
                 break;
+            case "softmaxderivative":
+                op = new org.nd4j.linalg.api.ops.impl.transforms.SoftMaxDerivative(x, z);
+                break;
             case "softmax":
                 op = new SoftMax(x, z);
                 break;
@@ -414,7 +531,7 @@ public class DefaultOpFactory implements OpFactory {
             default:
                 throw new ND4JIllegalStateException("No op found " + name);
         }
-
+*/
 
 
         op.setExtraArgs(extraArgs);
@@ -492,7 +609,18 @@ public class DefaultOpFactory implements OpFactory {
                                           INDArray z,
                                           Object[] extraArgs,
                                           double scalar) {
+        if (!opClazzes.containsKey(name))
+            throw new ND4JIllegalStateException("Unknown Op requested: " + name);
+
         ScalarOp ret = null;
+
+        try {
+            ret = (ScalarOp) opClazzes.get(name).getConstructor(INDArray.class, INDArray.class, INDArray.class, long.class, Number.class).newInstance(x, y, z, x.length(), scalar);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        /*
         switch(name) {
             case "add_scalar":
                 ret = new ScalarAdd(x,y,z,x.length(),scalar);
@@ -544,6 +672,8 @@ public class DefaultOpFactory implements OpFactory {
                 break;
         }
 
+        */
+
         ret.setExtraArgs(extraArgs);
         return ret;
     }
@@ -555,7 +685,18 @@ public class DefaultOpFactory implements OpFactory {
 
     @Override
     public BroadcastOp createBroadcastOp(String name, INDArray x, INDArray y, INDArray z, Object[] extraArgs, int... dimension) {
+        if (!opClazzes.containsKey(name))
+            throw new ND4JIllegalStateException("Unknown Op requested: " + name);
+
         BroadcastOp broadcastOp = null;
+
+        try {
+            broadcastOp = (BroadcastOp) opClazzes.get(name).getConstructor(INDArray.class, INDArray.class, INDArray.class, int[].class).newInstance(x, y, z, dimension);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+ /*
         switch (name) {
             case "broadcastadd":
                 broadcastOp = new BroadcastAddOp(x, y, z, dimension);
@@ -579,7 +720,7 @@ public class DefaultOpFactory implements OpFactory {
                 broadcastOp = new BroadcastCopyOp(x, y, z, dimension);
                 break;
         }
-
+*/
         broadcastOp.setExtraArgs(extraArgs);
         return broadcastOp;
     }
@@ -587,5 +728,49 @@ public class DefaultOpFactory implements OpFactory {
     @Override
     public BroadcastOp createBroadcastOp(String name, INDArray x, INDArray y, int... dimension) {
         return createBroadcastOp(name,x,y,x,null,dimension);
+    }
+
+
+    /**
+     * This method returns op id number for given opName
+     *
+     * @param opName
+     * @return
+     */
+    @Override
+    public int getOpNumByName(String opName) {
+        Class<? extends Op> cls = opClazzes.get(opName);
+
+        try {
+            Op op = cls.newInstance();
+
+            return op.opNum();
+        } catch (Exception e) {
+            throw new RuntimeException("OpName failed: [" + opName + "]",e);
+        }
+    }
+
+    @Override
+    public int getOpNumIfExists(String opName) {
+        if(opClazzes.containsKey(opName)) {
+            return getOpNumByName(opName);
+        } else
+            return -1;
+    }
+
+    @Override
+    public Op getOpByName(String opName) {
+        if(opClazzes.containsKey(opName)) {
+            Class<? extends Op> cls = opClazzes.get(opName);
+
+            try {
+                Op op = cls.newInstance();
+
+                return op;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        } else
+            return null;
     }
 }

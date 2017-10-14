@@ -1,9 +1,12 @@
 package org.nd4j.linalg.api.ops.random.impl;
 
 import lombok.NonNull;
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.random.BaseRandomOp;
 import org.nd4j.linalg.factory.Nd4j;
+
+import java.util.List;
 
 /**
  * Linspace/arange Op implementation, generates from..to distribution within Z
@@ -37,5 +40,12 @@ public class Linspace extends BaseRandomOp {
     @Override
     public String name() {
         return "linspace";
+    }
+
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+       throw new UnsupportedOperationException("Unable to differentiate array creation routine");
     }
 }

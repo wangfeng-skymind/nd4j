@@ -45,7 +45,21 @@ import java.nio.Buffer;
  */
 public interface Op {
     enum Type {
-        SCALAR, TRANSFORM, PAIRWISE, SPECIAL, BROADCAST, REDUCE, INDEXREDUCE, VARIANCE, REDUCE3, GRID, META, AGGREGATION
+        SCALAR,
+        TRANSFORM,
+        PAIRWISE,
+        SPECIAL,
+        BROADCAST,
+        REDUCE,
+        INDEXREDUCE,
+        VARIANCE,
+        REDUCE3,
+        GRID,
+        META,
+        AGGREGATION,
+        CUSTOM,
+        GRADIENT,
+        SHAPE
     }
 
     /**
@@ -66,7 +80,7 @@ public interface Op {
      * Returns a buffer of either float
      * or double
      * of the extra args for this buffer
-     * @return  a buffer of either type float or double
+     * @return  a buffer of either opType float or double
      * representing the extra args for this op
      */
     Buffer extraArgsBuff();
@@ -274,5 +288,17 @@ public interface Op {
      * @param extraArgs
      */
     void setExtraArgs(Object[] extraArgs);
+
+    /**
+     * Converts this op to be a {@link CustomOp}
+     * A {@link CustomOp} is a more flexible op
+     * meant for multiple inputs and outputs.
+     * The default implementation in {@link BaseOp}
+     * converts a simple op to a multi input/output operation
+     * by mapping the x and y on to inputs , the op name
+     * and the z on to outputs.
+     * @return the equivalent {@link CustomOp}
+     */
+    CustomOp toCustomOp();
 
 }

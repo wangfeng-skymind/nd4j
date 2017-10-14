@@ -19,10 +19,15 @@
 
 package org.nd4j.linalg.api.ops.impl.accum;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseAccumulation;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Sum the components
@@ -30,6 +35,13 @@ import org.nd4j.linalg.api.ops.Op;
  * @author Adam Gibson
  */
 public class Sum extends BaseAccumulation {
+    public Sum(SameDiff sameDiff, DifferentialFunction i_v, int[] dimensions) {
+        super(sameDiff, i_v, dimensions);
+    }
+
+    public Sum(SameDiff sameDiff, DifferentialFunction i_v, DifferentialFunction i_v2, int[] dimensions) {
+        super(sameDiff, i_v, i_v2, dimensions);
+    }
 
     public Sum() {}
 
@@ -149,4 +161,18 @@ public class Sum extends BaseAccumulation {
         else
             return new Sum(xAlongDimension);
     }
+
+
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        validateDifferentialFunctionsameDiff(i_v1);
+        validateFunctionReference(i_v1);
+        DifferentialFunction repeat =  f().doRepeat(
+                i_v1.get(0),
+                arg(),dimensions);
+        return Collections.singletonList(repeat);
+    }
+
 }

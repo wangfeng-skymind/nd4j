@@ -19,13 +19,15 @@
 
 package org.nd4j.linalg.api.ops.impl.transforms;
 
-import org.apache.commons.math3.util.FastMath;
-import org.nd4j.linalg.api.complex.IComplexNumber;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
-import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.api.ops.TransformOp;
-import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.ELUDerivative;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * ELU: Exponential Linear Unit (alpha=1.0)<br>
@@ -37,6 +39,18 @@ import org.nd4j.linalg.factory.Nd4j;
  * @author Alex Black
  */
 public class ELU extends BaseTransformOp {
+    public ELU(SameDiff sameDiff, DifferentialFunction i_v, boolean inPlace) {
+        super(sameDiff, i_v, inPlace);
+    }
+
+    public ELU(SameDiff sameDiff, DifferentialFunction i_v, int[] shape, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, shape, inPlace, extraArgs);
+    }
+
+    public ELU(SameDiff sameDiff, DifferentialFunction i_v, Object[] extraArgs) {
+        super(sameDiff, i_v, extraArgs);
+    }
+
     public ELU() {}
 
     public ELU(INDArray x, INDArray z) {
@@ -70,75 +84,16 @@ public class ELU extends BaseTransformOp {
     }
 
     @Override
-    public IComplexNumber op(IComplexNumber origin, double other) {
-        return origin.realComponent().doubleValue() >= 0.0 ? origin
-                        : Nd4j.createComplexNumber(FastMath.exp(origin.realComponent().doubleValue()) - 1.0, 0);
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin, float other) {
-        return origin.realComponent().doubleValue() >= 0.0 ? origin
-                        : Nd4j.createComplexNumber(FastMath.exp(origin.realComponent().doubleValue() - 1.0), 0);
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin, IComplexNumber other) {
-        return origin.realComponent().doubleValue() >= 0.0 ? origin
-                        : Nd4j.createComplexNumber(FastMath.exp(origin.realComponent().doubleValue() - 1.0), 0);
-    }
-
-    @Override
-    public float op(float origin, float other) {
-        return origin >= 0.0 ? origin : (float) (FastMath.exp(origin) - 1.0);
-    }
-
-    @Override
-    public double op(double origin, double other) {
-        return origin >= 0.0 ? origin : FastMath.exp(origin) - 1.0;
-    }
-
-    @Override
-    public double op(double origin) {
-        return origin >= 0.0 ? origin : FastMath.exp(origin) - 1.0;
-    }
-
-    @Override
-    public float op(float origin) {
-        return origin >= 0.0 ? origin : (float) (FastMath.exp(origin) - 1.0);
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin) {
-        return origin.realComponent().doubleValue() >= 0.0 ? origin
-                        : Nd4j.createComplexNumber(FastMath.exp(origin.realComponent().doubleValue() - 1.0), 0);
-
-    }
-
-    @Override
-    public Op opForDimension(int index, int dimension) {
-        INDArray xAlongDimension = x.vectorAlongDimension(index, dimension);
-
-        if (y() != null)
-            return new ELU(xAlongDimension, y.vectorAlongDimension(index, dimension),
-                            z.vectorAlongDimension(index, dimension), xAlongDimension.length());
-        else
-            return new ELU(xAlongDimension, z.vectorAlongDimension(index, dimension), xAlongDimension.length());
-    }
-
-    @Override
-    public Op opForDimension(int index, int... dimension) {
-        INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
-
-        if (y() != null)
-            return new ELU(xAlongDimension, y.tensorAlongDimension(index, dimension),
-                            z.tensorAlongDimension(index, dimension), xAlongDimension.length());
-        else
-            return new ELU(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
-
-    }
-
-    @Override
     public TransformOp derivative() {
         return new ELUDerivative(x, y, z, n);
     }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction ret = f().eluDerivative(arg());
+
+        return Collections.singletonList(ret);
+    }
+
 }

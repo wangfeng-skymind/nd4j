@@ -20,6 +20,8 @@
 package org.nd4j.linalg.factory;
 
 import com.google.common.base.Function;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Floats;
 import com.google.common.primitives.Ints;
 import lombok.NonNull;
 import org.apache.commons.io.FileUtils;
@@ -31,10 +33,7 @@ import org.bytedeco.javacpp.DoublePointer;
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.Pointer;
-import org.bytedeco.javacpp.indexer.DoubleRawIndexer;
-import org.bytedeco.javacpp.indexer.FloatRawIndexer;
 import org.bytedeco.javacpp.indexer.Indexer;
-import org.bytedeco.javacpp.indexer.IntRawIndexer;
 import org.nd4j.context.Nd4jContext;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.factory.DataBufferFactory;
@@ -49,9 +48,7 @@ import org.nd4j.linalg.api.concurrency.BasicAffinityManager;
 import org.nd4j.linalg.api.instrumentation.InMemoryInstrumentation;
 import org.nd4j.linalg.api.instrumentation.Instrumentation;
 import org.nd4j.linalg.api.memory.MemoryWorkspaceManager;
-import org.nd4j.linalg.api.ndarray.BaseShapeInfoProvider;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ndarray.ShapeInfoProvider;
+import org.nd4j.linalg.api.ndarray.*;
 import org.nd4j.linalg.api.ops.executioner.DefaultOpExecutioner;
 import org.nd4j.linalg.api.ops.executioner.OpExecutioner;
 import org.nd4j.linalg.api.ops.factory.DefaultOpFactory;
@@ -112,9 +109,11 @@ public class Nd4j {
     public final static String CONVOLUTION_OPS = "convops";
     public final static String DTYPE = "dtype";
     public final static String BLAS_OPS = "blas.ops";
+    public final static String SPARSE_BLAS_OPS = "sparseblas.ops";
     public final static String NATIVE_OPS = "native.ops";
     public final static String ORDER_KEY = "ndarray.order";
     public final static String NDARRAY_FACTORY_CLASS = "ndarrayfactory.class";
+    public final static String SPARSE_NDARRAY_FACTORY_CLASS = "sparsendarrayfactory.class";
     public final static String COPY_OPS = "ndarray.copyops";
     public final static String OP_EXECUTIONER = "opexec";
     public final static String OP_FACTORY = "opfactory";
@@ -123,6 +122,7 @@ public class Nd4j {
     public final static String RESOURCE_MANGER_ON = "resourcemanager_state";
     public final static String EXECUTION_MODE = "opexec.mode";
     public final static String SHAPEINFO_PROVIDER = "shapeinfoprovider";
+    public final static String SPARSEINFO_PROVIDER = "sparseinfoprovider";
     public final static String CONSTANT_PROVIDER = "constantsprovider";
     public final static String AFFINITY_MANAGER = "affinitymanager";
     //disable toString() on compressed arrays for debugging. Should be off by default.
@@ -158,7 +158,9 @@ public class Nd4j {
 
     protected static Class<? extends MemoryWorkspaceManager> workspaceManagerClazz;
     protected static Class<? extends BlasWrapper> blasWrapperClazz;
+    protected static Class<? extends BlasWrapper> sparseBlasWrapperClazz;
     protected static Class<? extends NDArrayFactory> ndArrayFactoryClazz;
+    protected static Class<? extends NDArrayFactory> sparseNDArrayClazz;
     protected static Class<? extends FFTInstance> fftInstanceClazz;
     protected static Class<? extends ConvolutionInstance> convolutionInstanceClazz;
     protected static Class<? extends DataBufferFactory> dataBufferFactoryClazz;
@@ -168,13 +170,16 @@ public class Nd4j {
     protected static Class<? extends DistributionFactory> distributionFactoryClazz;
     protected static Class<? extends Instrumentation> instrumentationClazz;
     protected static Class<? extends BaseShapeInfoProvider> shapeInfoProviderClazz;
+    protected static Class<? extends BaseSparseInfoProvider> sparseInfoProviderClazz;
     protected static Class<? extends BasicConstantHandler> constantProviderClazz;
     protected static Class<? extends BasicAffinityManager> affinityManagerClazz;
     protected static Class<? extends BasicMemoryManager> memoryManagerClazz;
 
     protected static DataBufferFactory DATA_BUFFER_FACTORY_INSTANCE;
     protected static BlasWrapper BLAS_WRAPPER_INSTANCE;
+    protected static BlasWrapper SPARSE_BLAS_WRAPPER_INSTANCE;
     protected static NDArrayFactory INSTANCE;
+    protected static NDArrayFactory SPARSE_INSTANCE;
     protected static FFTInstance FFT_INSTANCE;
     protected static ConvolutionInstance CONVOLUTION_INSTANCE;
     protected static OpExecutioner OP_EXECUTIONER_INSTANCE;
@@ -182,6 +187,7 @@ public class Nd4j {
     protected static OpFactory OP_FACTORY_INSTANCE;
     protected static Instrumentation instrumentation;
     protected static ShapeInfoProvider shapeInfoProvider;
+    protected static SparseInfoProvider sparseInfoProvider;
     protected static ConstantHandler constantHandler;
     protected static AffinityManager affinityManager;
     protected static MemoryManager memoryManager;
@@ -391,11 +397,11 @@ public class Nd4j {
      *                  new axis at
      * @return the array with the new axis dimension
      */
-    public static INDArray expandDims(INDArray input,int dimension) {
-        if(dimension < 0)
+    public static INDArray expandDims(INDArray input, int dimension) {
+        if (dimension < 0)
             dimension += input.rank();
         INDArrayIndex[] indexes = new INDArrayIndex[input.rank()];
-        for(int i = 0; i < indexes.length; i++)
+        for (int i = 0; i < indexes.length; i++)
             indexes[i] = NDArrayIndex.all();
         indexes[dimension] = NDArrayIndex.newAxis();
         return input.get(indexes);
@@ -517,6 +523,10 @@ public class Nd4j {
 
     public static void setNdArrayFactoryClazz(Class<? extends NDArrayFactory> clazz) {
         ndArrayFactoryClazz = clazz;
+    }
+
+    public static void setSparseNDArrayClazz(Class<? extends NDArrayFactory> clazz) {
+        sparseNDArrayClazz = clazz;
     }
 
     /**
@@ -905,7 +915,10 @@ public class Nd4j {
      * @param transposeB if true: transpose matrix b before mmul
      * @return result
      */
-    public static INDArray gemm(INDArray a, INDArray b, boolean transposeA, boolean transposeB) {
+    public static INDArray gemm(INDArray a,
+                                INDArray b,
+                                boolean transposeA,
+                                boolean transposeB) {
         int cRows = (transposeA ? a.columns() : a.rows());
         int cCols = (transposeB ? b.rows() : b.columns());
         INDArray c = Nd4j.createUninitialized(new int[] {cRows, cCols}, 'f');
@@ -925,8 +938,13 @@ public class Nd4j {
      * @param transposeB if true: transpose matrix b before mmul
      * @return result, i.e., matrix c is returned for convenience
      */
-    public static INDArray gemm(INDArray a, INDArray b, INDArray c, boolean transposeA, boolean transposeB,
-                                double alpha, double beta) {
+    public static INDArray gemm(INDArray a,
+                                INDArray b,
+                                INDArray c,
+                                boolean transposeA,
+                                boolean transposeB,
+                                double alpha,
+                                double beta) {
         getBlasWrapper().level3().gemm(a, b, c, transposeA, transposeB, alpha, beta);
         return c;
     }
@@ -975,6 +993,10 @@ public class Nd4j {
      */
     public static NDArrayFactory factory() {
         return INSTANCE;
+    }
+
+    public static NDArrayFactory sparseFactory() {
+        return SPARSE_INSTANCE;
     }
 
     public static INDArray cumsum(INDArray compute) {
@@ -1172,7 +1194,7 @@ public class Nd4j {
      * Create a buffer equal of length prod(shape)
      *
      * @param shape the shape of the buffer to create
-     * @param type  the type to create
+     * @param type  the opType to create
      * @return the created buffer
      */
     public static DataBuffer createBuffer(int[] shape, DataBuffer.Type type, long offset) {
@@ -1182,13 +1204,13 @@ public class Nd4j {
     }
 
     /**
-     * Creates a buffer of the specified type
+     * Creates a buffer of the specified opType
      * and length with the given byte buffer.
      *
      * This will wrap the buffer as a reference (no copy)
-     * if the allocation type is the same.
+     * if the allocation opType is the same.
      * @param buffer the buffer to create from
-     * @param type the type of buffer to create
+     * @param type the opType of buffer to create
      * @param length the length of the buffer
      * @return
      */
@@ -1201,13 +1223,13 @@ public class Nd4j {
             case FLOAT:
                 return DATA_BUFFER_FACTORY_INSTANCE.createFloat(offset, buffer, length);
             default:
-                throw new IllegalArgumentException("Illegal type " + type);
+                throw new IllegalArgumentException("Illegal opType " + type);
         }
     }
 
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1236,7 +1258,7 @@ public class Nd4j {
     }
 
     /**
-     * Creates a buffer of the specified length based on the data type
+     * Creates a buffer of the specified length based on the data opType
      *
      * @param length the length of te buffer
      * @return the buffer to create
@@ -1260,26 +1282,26 @@ public class Nd4j {
     }
 
     /**
-     * Create a double data type buffer
+     * Create a double data opType buffer
      * of the specified length
      * @param doublePointer
      * @param length
      * @return
      */
-    public static DataBuffer createBuffer(DoublePointer doublePointer,long length) {
-        return DATA_BUFFER_FACTORY_INSTANCE.create(doublePointer,length);
+    public static DataBuffer createBuffer(DoublePointer doublePointer, long length) {
+        return DATA_BUFFER_FACTORY_INSTANCE.create(doublePointer, length);
     }
 
 
     /**
-     * Create a float type
+     * Create a float opType
      * data buffer of the given length
      * @param floatPointer
      * @param length
      * @return
      */
-    public static DataBuffer createBuffer(FloatPointer floatPointer,long length) {
-        return DATA_BUFFER_FACTORY_INSTANCE.create(floatPointer,length);
+    public static DataBuffer createBuffer(FloatPointer floatPointer, long length) {
+        return DATA_BUFFER_FACTORY_INSTANCE.create(floatPointer, length);
     }
 
 
@@ -1291,12 +1313,12 @@ public class Nd4j {
      * @param length
      * @return
      */
-    public static DataBuffer createBuffer(IntPointer intPointer,long length) {
-        return DATA_BUFFER_FACTORY_INSTANCE.create(intPointer,length);
+    public static DataBuffer createBuffer(IntPointer intPointer, long length) {
+        return DATA_BUFFER_FACTORY_INSTANCE.create(intPointer, length);
     }
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1314,7 +1336,7 @@ public class Nd4j {
     }
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1337,7 +1359,7 @@ public class Nd4j {
      * Create a buffer equal of length prod(shape)
      *
      * @param shape the shape of the buffer to create
-     * @param type  the type to create
+     * @param type  the opType to create
      * @return the created buffer
      */
     public static DataBuffer createBuffer(int[] shape, DataBuffer.Type type) {
@@ -1362,13 +1384,13 @@ public class Nd4j {
     }
 
     /**
-     * Creates a buffer of the specified type
+     * Creates a buffer of the specified opType
      * and length with the given byte buffer.
      *
      * This will wrap the buffer as a reference (no copy)
-     * if the allocation type is the same.
+     * if the allocation opType is the same.
      * @param buffer the buffer to create from
-     * @param type the type of buffer to create
+     * @param type the opType of buffer to create
      * @param length the length of the buffer
      * @return
      */
@@ -1383,13 +1405,13 @@ public class Nd4j {
             case HALF:
                 return DATA_BUFFER_FACTORY_INSTANCE.createHalf(buffer, length);
             default:
-                throw new IllegalArgumentException("Illegal type " + type);
+                throw new IllegalArgumentException("Illegal opType " + type);
         }
     }
 
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1433,7 +1455,7 @@ public class Nd4j {
     }
 
     /**
-     * Creates a buffer of the specified length based on the data type
+     * Creates a buffer of the specified length based on the data opType
      *
      * @param length the length of te buffer
      * @return the buffer to create
@@ -1445,9 +1467,9 @@ public class Nd4j {
     /**
      * Create a data buffer
      * based on a pointer
-     * with the given type and length
+     * with the given opType and length
      * @param pointer the pointer to create the buffer for
-     * @param type the type of pointer
+     * @param type the opType of pointer
      * @param length the length of the buffer
      * @param  indexer the indexer to use
      * @return the data buffer based on the given parameters
@@ -1478,7 +1500,7 @@ public class Nd4j {
     }
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1520,7 +1542,7 @@ public class Nd4j {
     }
 
     /**
-     * Create a buffer based on the data type
+     * Create a buffer based on the data opType
      *
      * @param data the data to create the buffer with
      * @return the created buffer
@@ -1542,6 +1564,10 @@ public class Nd4j {
         INSTANCE = factory;
     }
 
+    public static void setSparseFactory(NDArrayFactory factory) {
+        SPARSE_INSTANCE = factory;
+    }
+
     /**
      * Returns the ordering of the ndarrays
      *
@@ -1552,7 +1578,7 @@ public class Nd4j {
     }
 
     /**
-     * Returns the data type used for the runtime
+     * Returns the data opType used for the runtime
      *
      * @return the datatype used for the runtime
      */
@@ -1582,6 +1608,14 @@ public class Nd4j {
      */
     public static BlasWrapper getBlasWrapper() {
         return BLAS_WRAPPER_INSTANCE;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public static BlasWrapper getSparseBlasWrapper() {
+        return SPARSE_BLAS_WRAPPER_INSTANCE;
     }
 
     /**
@@ -1927,6 +1961,11 @@ public class Nd4j {
      */
     public static INDArray linspace(int lower, int upper, int num) {
         // for now we'll temporarily keep original impl
+        if(lower == upper && num == 1) {
+            return Nd4j.scalar(lower);
+        }
+
+
         double approx = (double) num / ((double) (upper - lower) + 1);
         if (approx % 1 <= EPS_THRESHOLD) {
             return INSTANCE.linspace(lower, upper, num);
@@ -3269,6 +3308,28 @@ public class Nd4j {
      */
     public static INDArray create(float[] data) {
         return create(data, order());
+    }
+
+
+    /**
+     * Creates a row vector with the data
+     *
+     * @param list the columns of the ndarray
+     * @return the created ndarray
+     */
+    public static INDArray create(List<? extends Number> list) {
+        INDArray array = create(list.size());
+        int cnt = 0;
+        if (dataType() == DataBuffer.Type.DOUBLE) {
+            for (Number element: list) {
+                array.putScalar(cnt++,element.doubleValue());
+            }
+        } else {
+            for (Number element : list) {
+                array.putScalar(cnt++,element.floatValue());
+            }
+        }
+        return array;
     }
 
     /**
@@ -5016,9 +5077,9 @@ public class Nd4j {
         return ret;
     }
 
-    protected static void checkShapeValues(int[] shape) {
-        for (int e = 0; e < shape.length; e++) {
-            if (shape[e] < 1)
+    public static void checkShapeValues(int[] shape) {
+        for (int e: shape) {
+            if (e < 1)
                 throw new ND4JIllegalStateException("Invalid shape: Requested INDArray shape " + Arrays.toString(shape)
                         + " contains dimension size values < 1 (all dimensions must be 1 or more)");
         }
@@ -5250,6 +5311,116 @@ public class Nd4j {
         return ret;
     }
 
+    /**
+     * @param data
+     * @param columns
+     * @param pointerB
+     * @param pointerE
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCSR(double[] data, int[] columns, int[] pointerB, int[] pointerE, int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCSR(data, columns, pointerB, pointerE, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param data
+     * @param columns
+     * @param pointerB
+     * @param pointerE
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCSR(float[] data, int[] columns, int[] pointerB, int[] pointerE, int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCSR(data, columns, pointerB, pointerE, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param data
+     * @param columns
+     * @param pointerB
+     * @param pointerE
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCSR(DataBuffer data, int[] columns, int[] pointerB, int[] pointerE,
+                    int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCSR(data, columns, pointerB, pointerE, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param data
+     * @param indices
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCOO(double[] data, int[][] indices, int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCOO(data, indices, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param data
+     * @param indices
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCOO(float[] data, int[][] indices, int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCOO(data, indices, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param data
+     * @param indices
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCOO(DataBuffer data, DataBuffer indices, int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCOO(data, indices, shape);
+
+        return matrix;
+    }
+
+    /**
+     * @param values a DataBuffer with the sparse non-null values
+     * @param indices a DataBuffer with the indexes of the values
+     * @param sparseInformation a DataBuffer containing the sparse information (flags, offsets and hidden dimensions)
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCOO(DataBuffer values, DataBuffer indices, DataBuffer sparseInformation,
+                    int[] shape) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCOO(values, indices, sparseInformation, shape);
+        return matrix;
+    }
+
+    /**
+     * @param values a DataBuffer with the sparse non-null values
+     * @param indices a DataBuffer with the indexes of the values
+     * @param sparseOffsets the sparse
+     * @param flags an array that define the inactive dimension
+     * @param hiddenDimensions an array containing the position of the hidden dimensions
+     * @param underlyingRank the rank of the original ndarray
+     * @param shape
+     * @return a INDArray
+     * */
+    public static INDArray createSparseCOO(DataBuffer values, DataBuffer indices, long[] sparseOffsets, int[] flags,
+                    int[] shape, int[] hiddenDimensions, int underlyingRank) {
+        INDArray matrix = SPARSE_INSTANCE.createSparseCOO(values, indices, sparseOffsets, flags, hiddenDimensions,
+                        underlyingRank, shape);
+        return matrix;
+    }
+
+
     ////////////////////// OTHER ///////////////////////////////
 
 
@@ -5257,7 +5428,7 @@ public class Nd4j {
     /**
      * Creates a row vector with the specified number of columns
      *
-     * @param rows    the rows of the ndarray
+     * @param rows    the rows of the sndarray
      * @param columns the columns of the ndarray
      * @return the created ndarray
      */
@@ -6111,6 +6282,7 @@ public class Nd4j {
             Nd4j.backend = backend;
             updateNd4jContext();
             props = Nd4jContext.getInstance().getConf();
+
             String otherDtype = System.getProperty(DTYPE, props.get(DTYPE).toString());
             dtype = otherDtype.equals("float") ? DataBuffer.Type.FLOAT
                     : otherDtype.equals("half") ? DataBuffer.Type.HALF : DataBuffer.Type.DOUBLE;
@@ -6128,29 +6300,34 @@ public class Nd4j {
             shouldInstrument = Boolean.parseBoolean(props.getProperty(INSTRUMENTATION, "false"));
             resourceManagerOn = Boolean.parseBoolean(props.getProperty(RESOURCE_MANGER_ON, "false"));
             executionMode = props.getProperty(EXECUTION_MODE, "java").equals("java") ? OpExecutioner.ExecutionMode.JAVA
-                    : OpExecutioner.ExecutionMode.NATIVE;
+                            : OpExecutioner.ExecutionMode.NATIVE;
             ORDER = System.getProperty(ORDER_KEY, props.getProperty(ORDER_KEY, "c").toString()).charAt(0);
 
             affinityManagerClazz = (Class<? extends BasicAffinityManager>) Class
-                    .forName(System.getProperty(AFFINITY_MANAGER, props.get(AFFINITY_MANAGER).toString()));
+                            .forName(System.getProperty(AFFINITY_MANAGER, props.get(AFFINITY_MANAGER).toString()));
             affinityManager = affinityManagerClazz.newInstance();
 
             fftInstanceClazz = (Class<? extends FFTInstance>) Class
-                    .forName(System.getProperty(FFT_OPS, DefaultFFTInstance.class.getName()));
+                            .forName(System.getProperty(FFT_OPS, DefaultFFTInstance.class.getName()));
             ndArrayFactoryClazz = (Class<? extends NDArrayFactory>) Class.forName(
-                    System.getProperty(NDARRAY_FACTORY_CLASS, props.get(NDARRAY_FACTORY_CLASS).toString()));
+                            System.getProperty(NDARRAY_FACTORY_CLASS, props.get(NDARRAY_FACTORY_CLASS).toString()));
+            sparseNDArrayClazz = (Class<? extends NDArrayFactory>) Class.forName(System.getProperty(
+                            SPARSE_NDARRAY_FACTORY_CLASS, props.getProperty(SPARSE_NDARRAY_FACTORY_CLASS).toString()));
             convolutionInstanceClazz = (Class<? extends ConvolutionInstance>) Class
-                    .forName(System.getProperty(CONVOLUTION_OPS, DefaultConvolutionInstance.class.getName()));
+                            .forName(System.getProperty(CONVOLUTION_OPS, DefaultConvolutionInstance.class.getName()));
             String defaultName = props.getProperty(DATA_BUFFER_OPS, DefaultDataBufferFactory.class.getName());
             dataBufferFactoryClazz = (Class<? extends DataBufferFactory>) Class
-                    .forName(System.getProperty(DATA_BUFFER_OPS, defaultName));
+                            .forName(System.getProperty(DATA_BUFFER_OPS, defaultName));
             shapeInfoProviderClazz = (Class<? extends BaseShapeInfoProvider>) Class
-                    .forName(System.getProperty(SHAPEINFO_PROVIDER, props.get(SHAPEINFO_PROVIDER).toString()));
+                            .forName(System.getProperty(SHAPEINFO_PROVIDER, props.get(SHAPEINFO_PROVIDER).toString()));
+            sparseInfoProviderClazz = (Class<? extends BaseSparseInfoProvider>) Class.forName(
+                            System.getProperty(SPARSEINFO_PROVIDER, props.get(SPARSEINFO_PROVIDER).toString()));
+
             constantProviderClazz = (Class<? extends BasicConstantHandler>) Class
-                    .forName(System.getProperty(CONSTANT_PROVIDER, props.get(CONSTANT_PROVIDER).toString()));
+                            .forName(System.getProperty(CONSTANT_PROVIDER, props.get(CONSTANT_PROVIDER).toString()));
 
             memoryManagerClazz = (Class<? extends BasicMemoryManager>) Class
-                    .forName(System.getProperty(MEMORY_MANAGER, props.get(MEMORY_MANAGER).toString()));
+                            .forName(System.getProperty(MEMORY_MANAGER, props.get(MEMORY_MANAGER).toString()));
 
             allowsOrder = backend.allowsOrder();
             String rand = props.getProperty(RANDOM_PROVIDER, DefaultRandom.class.getName());
@@ -6158,17 +6335,19 @@ public class Nd4j {
             randomFactory = new RandomFactory(randomClazz);
 
             workspaceManagerClazz = (Class<? extends MemoryWorkspaceManager>) Class
-                    .forName(System.getProperty(WORKSPACE_MANAGER, props.get(WORKSPACE_MANAGER).toString()));
+                            .forName(System.getProperty(WORKSPACE_MANAGER, props.get(WORKSPACE_MANAGER).toString()));
 
 
             instrumentationClazz = (Class<? extends Instrumentation>) Class
-                    .forName(props.getProperty(INSTRUMENTATION, InMemoryInstrumentation.class.getName()));
+                            .forName(props.getProperty(INSTRUMENTATION, InMemoryInstrumentation.class.getName()));
 
             opFactoryClazz = (Class<? extends OpFactory>) Class
-                    .forName(System.getProperty(OP_FACTORY, DefaultOpFactory.class.getName()));
+                            .forName(System.getProperty(OP_FACTORY, DefaultOpFactory.class.getName()));
 
             blasWrapperClazz = (Class<? extends BlasWrapper>) Class
-                    .forName(System.getProperty(BLAS_OPS, props.get(BLAS_OPS).toString()));
+                            .forName(System.getProperty(BLAS_OPS, props.get(BLAS_OPS).toString()));
+            sparseBlasWrapperClazz = (Class<? extends BlasWrapper>) Class
+                            .forName(System.getProperty(SPARSE_BLAS_OPS, props.get(SPARSE_BLAS_OPS).toString()));
             String clazzName = props.getProperty(DISTRIBUTION, DefaultDistributionFactory.class.getName());
             distributionFactoryClazz = (Class<? extends DistributionFactory>) Class.forName(clazzName);
 
@@ -6176,18 +6355,21 @@ public class Nd4j {
             memoryManager = memoryManagerClazz.newInstance();
             constantHandler = constantProviderClazz.newInstance();
             shapeInfoProvider = shapeInfoProviderClazz.newInstance();
+            sparseInfoProvider = sparseInfoProviderClazz.newInstance();
             workspaceManager = workspaceManagerClazz.newInstance();
 
             opExecutionerClazz = (Class<? extends OpExecutioner>) Class
-                    .forName(props.getProperty(OP_EXECUTIONER, DefaultOpExecutioner.class.getName()));
+                            .forName(props.getProperty(OP_EXECUTIONER, DefaultOpExecutioner.class.getName()));
 
             instrumentation = instrumentationClazz.newInstance();
             OP_EXECUTIONER_INSTANCE = opExecutionerClazz.newInstance();
             FFT_INSTANCE = fftInstanceClazz.newInstance();
             Constructor c2 = ndArrayFactoryClazz.getConstructor(DataBuffer.Type.class, char.class);
             INSTANCE = (NDArrayFactory) c2.newInstance(dtype, ORDER);
+            SPARSE_INSTANCE = sparseNDArrayClazz.newInstance();
             CONVOLUTION_INSTANCE = convolutionInstanceClazz.newInstance();
             BLAS_WRAPPER_INSTANCE = blasWrapperClazz.newInstance();
+            SPARSE_BLAS_WRAPPER_INSTANCE = sparseBlasWrapperClazz.newInstance();
             DATA_BUFFER_FACTORY_INSTANCE = dataBufferFactoryClazz.newInstance();
             OP_FACTORY_INSTANCE = opFactoryClazz.newInstance();
 
@@ -6196,7 +6378,7 @@ public class Nd4j {
             ZERO = Nd4j.createFloat(0, 0);
             NEG_UNIT = Nd4j.createFloat(-1, 0);
             ENFORCE_NUMERICAL_STABILITY =
-                    Boolean.parseBoolean(System.getProperty(NUMERICAL_STABILITY, String.valueOf(false)));
+                            Boolean.parseBoolean(System.getProperty(NUMERICAL_STABILITY, String.valueOf(false)));
             DISTRIBUTION_FACTORY = distributionFactoryClazz.newInstance();
             getExecutioner().setExecutionMode(executionMode);
 
@@ -6245,8 +6427,8 @@ public class Nd4j {
     }
 
     private String[] getMessageForNativeHalfPrecision() {
-        return new String[] {"Half-precision data type isn't support for nd4j-native",
-                "Please, consider using FLOAT or DOUBLE data type instead"};
+        return new String[] {"Half-precision data opType isn't support for nd4j-native",
+                "Please, consider using FLOAT or DOUBLE data opType instead"};
     }
 
     private void updateNd4jContext() throws IOException {
@@ -6269,6 +6451,14 @@ public class Nd4j {
      */
     public static ShapeInfoProvider getShapeInfoProvider() {
         return shapeInfoProvider;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public static SparseInfoProvider getSparseInfoProvider() {
+        return sparseInfoProvider;
     }
 
     /**

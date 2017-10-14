@@ -12,10 +12,14 @@
 
 package org.nd4j.linalg.api.ops.impl.scalar;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseScalarOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Scalar floating-point remainder
@@ -39,6 +43,22 @@ public class ScalarRemainder extends BaseScalarOp {
 
     public ScalarRemainder(INDArray x, IComplexNumber num) {
         super(x, num);
+    }
+
+    public ScalarRemainder(SameDiff sameDiff, DifferentialFunction i_v, Number scalar) {
+        super(sameDiff, i_v, scalar);
+    }
+
+    public ScalarRemainder(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace) {
+        super(sameDiff, i_v, scalar, inPlace);
+    }
+
+    public ScalarRemainder(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, inPlace, extraArgs);
+    }
+
+    public ScalarRemainder(SameDiff sameDiff, DifferentialFunction i_v, Number scalar, Object[] extraArgs) {
+        super(sameDiff, i_v, scalar, extraArgs);
     }
 
     @Override
@@ -113,5 +133,10 @@ public class ScalarRemainder extends BaseScalarOp {
             return new ScalarRemainder(x.tensorAlongDimension(index, dimension), num);
         else
             return new ScalarRemainder(x.tensorAlongDimension(index, dimension), complexNumber);
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        throw new UnsupportedOperationException();
     }
 }

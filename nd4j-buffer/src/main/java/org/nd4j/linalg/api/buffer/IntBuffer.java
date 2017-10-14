@@ -59,9 +59,11 @@ public class IntBuffer extends BaseDataBuffer {
     public IntBuffer(long length, boolean initialize, MemoryWorkspace workspace) {
         super(length, initialize, workspace);
     }
+
     public IntBuffer(int[] ints, boolean copy, MemoryWorkspace workspace) {
         super(ints, copy, workspace);
     }
+
     public IntBuffer(ByteBuffer buffer, int length, long offset) {
         super(buffer, length, offset);
     }
@@ -154,7 +156,7 @@ public class IntBuffer extends BaseDataBuffer {
     }
 
     /**
-     * Initialize the type of this buffer
+     * Initialize the opType of this buffer
      */
     @Override
     protected void initTypeAndSize() {

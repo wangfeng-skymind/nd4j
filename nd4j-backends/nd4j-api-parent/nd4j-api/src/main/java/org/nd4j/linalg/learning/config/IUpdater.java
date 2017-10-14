@@ -16,7 +16,7 @@ import java.io.Serializable;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY, getterVisibility = JsonAutoDetect.Visibility.NONE,
-        setterVisibility = JsonAutoDetect.Visibility.NONE)
+                setterVisibility = JsonAutoDetect.Visibility.NONE)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 public interface IUpdater extends Serializable, Cloneable {
 
@@ -28,14 +28,6 @@ public interface IUpdater extends Serializable, Cloneable {
      * @return Updater state size for the given number of parameters
      */
     long stateSize(long numParams);
-
-    /**
-     * Apply the new learning rate and any other schedules
-     *
-     * @param iteration       Current iteration count
-     * @param newLearningRate new learning rate to set for the updater
-     */
-    void applySchedules(int iteration, double newLearningRate);
 
     /**
      * Create a new gradient updater
@@ -52,5 +44,16 @@ public interface IUpdater extends Serializable, Cloneable {
      * Clone the updater
      */
     IUpdater clone();
+
+    /**
+     * Get the learning rate - if any - for the updater, at the specified iteration and epoch.
+     * Note that if no learning rate is applicable (AdaDelta, NoOp updaters etc) then Double.NaN should
+     * be return
+     *
+     * @param iteration Iteration at which to get the learning rate
+     * @param epoch     Epoch at which to get the learning rate
+     * @return          Learning rate, or Double.NaN if no learning rate is applicable for this updater
+     */
+    double getLearningRate(int iteration, int epoch);
 
 }

@@ -20,11 +20,17 @@
 package org.nd4j.linalg.api.ops.impl.transforms;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.api.ops.TransformOp;
+import org.nd4j.linalg.api.ops.impl.transforms.gradient.SELUDerivative;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * SELU activation function
@@ -37,6 +43,18 @@ public class SELU extends BaseTransformOp {
 
     private static final double SELU_ALPHA = 1.6732632423543772848170429916717;
     private static final double SELU_LAMBDA = 1.0507009873554804934193349852946;
+
+    public SELU(SameDiff sameDiff, DifferentialFunction i_v, boolean inPlace) {
+        super(sameDiff, i_v, inPlace);
+    }
+
+    public SELU(SameDiff sameDiff, DifferentialFunction i_v, int[] shape, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, i_v, shape, inPlace, extraArgs);
+    }
+
+    public SELU(SameDiff sameDiff, DifferentialFunction i_v, Object[] extraArgs) {
+        super(sameDiff, i_v, extraArgs);
+    }
 
     public SELU() {}
 
@@ -94,7 +112,8 @@ public class SELU extends BaseTransformOp {
 
     @Override
     public float op(float d1) {
-        return d1 > 0.0f ? (float) SELU_LAMBDA * d1 : (float) ((float) SELU_LAMBDA * ((float) SELU_ALPHA * FastMath.exp(d1) - (float) SELU_ALPHA));
+        return d1 > 0.0f ? (float) SELU_LAMBDA * d1
+                        : (float) ((float) SELU_LAMBDA * ((float) SELU_ALPHA * FastMath.exp(d1) - (float) SELU_ALPHA));
     }
 
     @Override
@@ -116,6 +135,15 @@ public class SELU extends BaseTransformOp {
     @Override
     public Op opForDimension(int index, int... dimension) {
         INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
-            return new SELU(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
+        return new SELU(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
     }
+
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction ret = f().div(arg(),f().selu(arg()));
+        return Collections.singletonList(ret);
+    }
+
 }

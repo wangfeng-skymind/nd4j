@@ -19,12 +19,16 @@
 
 package org.nd4j.linalg.api.ops.impl.accum;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseAccumulation;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.util.ArrayUtil;
+
+import java.util.List;
 
 /**
  * Calculate a bias
@@ -34,6 +38,16 @@ import org.nd4j.linalg.util.ArrayUtil;
 public class Bias extends BaseAccumulation {
 
     private double mean;
+
+    public Bias(SameDiff sameDiff, DifferentialFunction i_v, int[] dimensions, double mean) {
+        super(sameDiff, i_v, dimensions);
+        this.mean = mean;
+    }
+
+    public Bias(SameDiff sameDiff, DifferentialFunction i_v, DifferentialFunction i_v2, int[] dimensions, double mean) {
+        super(sameDiff, i_v, i_v2, dimensions);
+        this.mean = mean;
+    }
 
     public Bias() {}
 
@@ -200,5 +214,10 @@ public class Bias extends BaseAccumulation {
                             .doubleValue();
             z.putScalar(i, d);
         }
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

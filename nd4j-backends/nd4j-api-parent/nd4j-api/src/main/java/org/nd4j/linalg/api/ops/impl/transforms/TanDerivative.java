@@ -20,10 +20,13 @@
 package org.nd4j.linalg.api.ops.impl.transforms;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseTransformOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Tan Derivative elementwise function
@@ -104,14 +107,15 @@ public class TanDerivative extends BaseTransformOp {
         throw new UnsupportedOperationException();
     }
 
-     @Override
+    @Override
     public Op opForDimension(int index, int dimension) {
         INDArray xAlongDimension = x.vectorAlongDimension(index, dimension);
         if (y() != null)
             return new TanDerivative(xAlongDimension, y.vectorAlongDimension(index, dimension),
                             z.vectorAlongDimension(index, dimension), xAlongDimension.length());
         else
-            return new TanDerivative(xAlongDimension, z.vectorAlongDimension(index, dimension), xAlongDimension.length());
+            return new TanDerivative(xAlongDimension, z.vectorAlongDimension(index, dimension),
+                            xAlongDimension.length());
 
     }
 
@@ -122,7 +126,14 @@ public class TanDerivative extends BaseTransformOp {
             return new TanDerivative(xAlongDimension, y.tensorAlongDimension(index, dimension),
                             z.tensorAlongDimension(index, dimension), xAlongDimension.length());
         else
-            return new TanDerivative(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
+            return new TanDerivative(xAlongDimension, z.tensorAlongDimension(index, dimension),
+                            xAlongDimension.length());
 
+    }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

@@ -20,7 +20,10 @@
 package org.nd4j.linalg.api.ops;
 
 import lombok.Data;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.buffer.DataBuffer;
+import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -33,7 +36,7 @@ import java.nio.Buffer;
  * @author Adam Gibson
  */
 @Data
-public abstract class BaseOp implements Op {
+public abstract class BaseOp extends DifferentialFunction implements Op {
 
     protected INDArray x, y, z;
     protected long n;
@@ -46,6 +49,15 @@ public abstract class BaseOp implements Op {
 
     public BaseOp() {}
 
+
+    public BaseOp(SameDiff sameDiff, boolean inPlace, Object[] extraArgs) {
+        super(sameDiff, inPlace, extraArgs);
+    }
+
+    public BaseOp(SameDiff sameDiff, Object[] extraArgs) {
+        super(sameDiff, extraArgs);
+    }
+
     @Override
     public boolean isExecSpecial() {
         return false;
@@ -54,7 +66,11 @@ public abstract class BaseOp implements Op {
     public static Type getOpType(Op op) {
         Type type = null;
 
-        if (op instanceof TransformOp) {
+        if (op instanceof CustomOp) {
+            return Type.CUSTOM;
+        } else if (op  instanceof ShapeOp) {
+            return Type.SHAPE;
+        } else if (op instanceof TransformOp) {
             if (op.y() == null) {
                 if (!op.isExecSpecial())
                     type = Op.Type.TRANSFORM;
@@ -103,11 +119,15 @@ public abstract class BaseOp implements Op {
             } else if (dtype == DataBuffer.Type.DOUBLE) {
                 double extraz[] = new double[extraArgs.length];
                 for (int i = 0; i < extraArgs.length; i++) {
+                    if(!(extraArgs[i] instanceof Number))
+                        continue;
                     Number arg = (Number) extraArgs[i];
+                    if(arg == null)
+                        arg = 0.0;
                     double val = arg.doubleValue();
                     extraz[i] = val;
                 }
-                extraArgz = Nd4j.getConstantHandler().getConstantBuffer(extraz);;
+                extraArgz = Nd4j.getConstantHandler().getConstantBuffer(extraz);
                 return extraArgz;
             }
         }
@@ -202,7 +222,7 @@ public abstract class BaseOp implements Op {
      * @param x the ndarray
      */
     public BaseOp(INDArray x) {
-        this(x, null, x, x ==  null ? 0 : x.lengthLong());
+        this(x, null, x, x == null ? 0 : x.lengthLong());
     }
 
     @Override
@@ -254,6 +274,143 @@ public abstract class BaseOp implements Op {
     @Override
     public String toString() {
         return name();
+    }
+
+
+    @Override
+    public Op opForDimension(int index, int dimension) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Op opForDimension(int index, int... dimension) {
+        throw new UnsupportedOperationException();
+    }
+
+
+
+    @Override
+    public CustomOp toCustomOp() {
+        DynamicCustomOp.DynamicCustomOpsBuilder customOpBuilder = DynamicCustomOp.builder(name());
+        customOpBuilder.callInplace(x() == z());
+
+        if(y() != null)
+            customOpBuilder.addInputs(x(),y());
+        else
+            customOpBuilder.addInputs(x());
+
+        customOpBuilder.addOutputs(z());
+        if(extraArgs != null) {
+            for(int i = 0; i < extraArgs.length; i++) {
+                if(extraArgs[i] instanceof Integer) {
+                    customOpBuilder.addIntegerArguments((Integer) extraArgs[i]);
+                }
+                else if(extraArgs[i] instanceof Double || extraArgs[i] instanceof Float) {
+                    Double num = (Double) extraArgs[i];
+                    customOpBuilder.addFloatingPointArguments(num);
+                }
+            }
+        }
+
+        return customOpBuilder.build();
+
+    }
+
+    /**
+     * Pairwise op (applicable with an individual element in y)
+     *
+     * @param origin the origin number
+     * @param other  the other number
+     * @return the transformed output
+     */
+    @Override
+    public IComplexNumber op(IComplexNumber origin, double other) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Pairwise op (applicable with an individual element in y)
+     *
+     * @param origin the origin number
+     * @param other  the other number
+     * @return the transformed output
+     */
+    @Override
+    public IComplexNumber op(IComplexNumber origin, float other) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Pairwise op (applicable with an individual element in y)
+     *
+     * @param origin the origin number
+     * @param other  the other number
+     * @return the transformed output
+     */
+    @Override
+    public IComplexNumber op(IComplexNumber origin, IComplexNumber other) {
+        throw new UnsupportedOperationException();
+
+    }
+
+    /**
+     * Pairwise op (applicable with an individual element in y)
+     *
+     * @param origin the origin number
+     * @param other  the other number
+     * @return the transformed output
+     */
+    @Override
+    public float op(float origin, float other) {
+        throw new UnsupportedOperationException();
+
+    }
+
+    /**
+     * Pairwise op (applicable with an individual element in y)
+     *
+     * @param origin the origin number
+     * @param other  the other number
+     * @return the transformed output
+     */
+    @Override
+    public double op(double origin, double other) {
+        throw new UnsupportedOperationException();
+
+    }
+
+    /**
+     * Transform an individual element
+     *
+     * @param origin the origin element
+     * @return the new element
+     */
+    @Override
+    public double op(double origin) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Transform an individual element
+     *
+     * @param origin the origin element
+     * @return the new element
+     */
+    @Override
+    public float op(float origin) {
+        throw new UnsupportedOperationException();
+
+    }
+
+    /**
+     * Transform an individual element
+     *
+     * @param origin the origin element
+     * @return the new element
+     */
+    @Override
+    public IComplexNumber op(IComplexNumber origin) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

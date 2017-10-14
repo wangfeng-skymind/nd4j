@@ -336,13 +336,15 @@ public class DefaultDataBufferFactory implements DataBufferFactory {
     }
 
     @Override
-    public DataBuffer createInt(int[] data, MemoryWorkspace workspace){
+    public DataBuffer createInt(int[] data, MemoryWorkspace workspace) {
         return createInt(data, true, workspace);
     }
+
     @Override
-    public DataBuffer createInt(int[] data, boolean copy, MemoryWorkspace workspace){
+    public DataBuffer createInt(int[] data, boolean copy, MemoryWorkspace workspace) {
         return new IntBuffer(data, copy, workspace);
     }
+
     @Override
     public DataBuffer createDouble(double[] data) {
         return createDouble(data, true);
@@ -455,16 +457,16 @@ public class DefaultDataBufferFactory implements DataBufferFactory {
 
     /**
      * Create a data buffer based on the
-     * given pointer, data buffer type,
+     * given pointer, data buffer opType,
      * and length of the buffer
      *
      * @param pointer the pointer to use
-     * @param type    the type of buffer
+     * @param type    the opType of buffer
      * @param length  the length of the buffer
      * @param indexer the indexer for the pointer
      * @return the data buffer
      * backed by this pointer with the given
-     * type and length.
+     * opType and length.
      */
     @Override
     public DataBuffer create(Pointer pointer, DataBuffer.Type type, long length, Indexer indexer) {
@@ -476,7 +478,7 @@ public class DefaultDataBufferFactory implements DataBufferFactory {
             case FLOAT:
                 return new FloatBuffer(pointer, indexer, length);
         }
-        throw new IllegalArgumentException("Invalid type " + type);
+        throw new IllegalArgumentException("Invalid opType " + type);
     }
 
     /**

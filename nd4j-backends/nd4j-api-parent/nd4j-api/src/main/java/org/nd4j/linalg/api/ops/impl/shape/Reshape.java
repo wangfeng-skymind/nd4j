@@ -20,19 +20,35 @@
 package org.nd4j.linalg.api.ops.impl.shape;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.BaseOp;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.api.ops.ShapeOp;
 import org.nd4j.linalg.util.ComplexUtil;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
- * Transpose function
+ * Reshape function
  *
  * @author Adam Gibson
  */
 public class Reshape extends ShapeOp {
+
+    private int[] shape;
+
+    public Reshape(SameDiff sameDiff, DifferentialFunction i_v,int[] shape) {
+        super(sameDiff, i_v, false);
+        this.shape = shape;
+    }
+
+    public Reshape(SameDiff sameDiff, DifferentialFunction i_v, int[] shape, Object[] extraArgs, int[] shape1) {
+        super(sameDiff, i_v, shape, false, extraArgs);
+        this.shape = shape1;
+    }
 
     public Reshape() {}
 
@@ -50,6 +66,27 @@ public class Reshape extends ShapeOp {
 
     public Reshape(INDArray x) {
         super(x);
+    }
+
+    @Override
+    public void exec(int... dimensions) {
+        exec();
+    }
+
+    @Override
+    public boolean isExecSpecial() {
+        return true;
+    }
+
+    @Override
+    public void exec() {
+        if(x != z) {
+            z.assign(x.reshape(shape));
+        }
+        else {
+            this.z = x.reshape(shape);
+        }
+
     }
 
 
@@ -115,10 +152,6 @@ public class Reshape extends ShapeOp {
 
     }
 
-    @Override
-    public INDArray z() {
-        return x().transpose();
-    }
 
     @Override
     public Op opForDimension(int index, int... dimension) {
@@ -131,4 +164,12 @@ public class Reshape extends ShapeOp {
             return new Reshape(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
 
     }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        DifferentialFunction ret = this;
+
+        return Collections.singletonList(ret);
+    }
+
 }

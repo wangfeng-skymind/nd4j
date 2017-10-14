@@ -41,7 +41,7 @@ public class NadamUpdater implements GradientUpdater<Nadam> {
 
     private char gradientReshapeOrder;
 
-    public NadamUpdater(Nadam config){
+    public NadamUpdater(Nadam config) {
         this.config = config;
     }
 
@@ -72,13 +72,13 @@ public class NadamUpdater implements GradientUpdater<Nadam> {
      * @return the gradient
      */
     @Override
-    public void applyUpdater(INDArray gradient, int iteration) {
+    public void applyUpdater(INDArray gradient, int iteration, int epoch) {
         if (m == null || v == null)
             throw new IllegalStateException("Updater has not been initialized with view state");
 
         double beta1 = config.getBeta1();
         double beta2 = config.getBeta2();
-        double learningRate = config.getLearningRate();
+        double learningRate = config.getLearningRate(iteration, epoch);
         double epsilon = config.getEpsilon();
 
         INDArray oneMinusBeta1Grad = gradient.mul(1.0 - beta1);
@@ -92,7 +92,7 @@ public class NadamUpdater implements GradientUpdater<Nadam> {
         INDArray biasCorrectedEstimateOfMomentum = m.mul(beta1).divi(1.0 - beta1t);
         INDArray secondTerm = oneMinusBeta1Grad.divi(1 - beta1t);
 
-        INDArray alphat =  biasCorrectedEstimateOfMomentum.add(secondTerm).muli(learningRate);
+        INDArray alphat = biasCorrectedEstimateOfMomentum.add(secondTerm).muli(learningRate);
 
         INDArray sqrtV = Transforms.sqrt(v.dup(gradientReshapeOrder), false).addi(epsilon);
 

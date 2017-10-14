@@ -19,11 +19,13 @@
 
 package org.nd4j.linalg.api.ops;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.api.shape.Shape;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.util.LinAlgExceptions;
 
 /**
  * Base class for accumulation, initiates the initial entry
@@ -38,7 +40,43 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     protected boolean applyFinalTransform = true;
     protected boolean isComplex = false;
 
+    public BaseAccumulation(SameDiff sameDiff,
+                            DifferentialFunction i_v,
+                            int[] dimensions) {
+        super(sameDiff,new Object[]{dimensions});
+        if (i_v != null) {
+            this.args = new DifferentialFunction[] {i_v};
+            this.dimensions = dimensions;
+            validateDifferentialFunctionsameDiff(i_v);
+
+            addEdges(sameDiff,args[0],name(), Shape.getReducedShape(i_v.getResultShape(),dimensions));
+        } else {
+            throw new IllegalArgumentException("Input not null variable.");
+        }
+    }
+
+    public BaseAccumulation(SameDiff sameDiff,
+                            DifferentialFunction i_v,
+                            DifferentialFunction i_v2,
+                            int[] dimensions) {
+        super(sameDiff,new Object[]{dimensions});
+        if (i_v != null) {
+            this.args = new DifferentialFunction[] {i_v,i_v2};
+            this.dimensions = dimensions;
+            validateDifferentialFunctionsameDiff(i_v);
+            validateDifferentialFunctionsameDiff(i_v2);
+
+            addEdges(sameDiff,args[0],args[1],name());
+        } else {
+            throw new IllegalArgumentException("Input not null variable.");
+        }
+    }
+
+
+
     public BaseAccumulation() {}
+
+
 
 
     /**
@@ -54,8 +92,8 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     public BaseAccumulation(INDArray x, INDArray y, INDArray z, long n) {
         super(x, y, z, n);
         init();
-  //      if (y != null)
-//            LinAlgExceptions.assertSameLength(x, y);
+        //      if (y != null)
+        //            LinAlgExceptions.assertSameLength(x, y);
         //LinAlgExceptions.assertSameLength(x, z);
 
     }
@@ -72,6 +110,27 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
         this(x, y, x, x.lengthLong());
         //if (y != null)
         //    LinAlgExceptions.assertSameLength(x, y);
+    }
+
+    public BaseAccumulation(SameDiff sameDiff) {
+        this.sameDiff = sameDiff;
+    }
+
+
+    @Override
+    protected void addEdges(SameDiff sameDiff,
+                            DifferentialFunction i_v1,
+                            DifferentialFunction i_v2,
+                            String opName) {
+        //skip empty dimensions
+        if(dimensions == null)
+            return;
+        addEdges(sameDiff,i_v1,i_v2,opName,
+                Op.Type.REDUCE3,
+                Shape.getReducedShape(i_v1.getResultShape(),
+                        dimensions));
+
+
     }
 
     private void init() {
@@ -176,11 +235,11 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     public void init(INDArray x, INDArray y, INDArray z, long n) {
         super.init(x, y, z, n);
         if (Nd4j.dataType() == DataBuffer.Type.DOUBLE) {
-            this.extraArgs = new Object[]{zeroDouble()};
+            this.extraArgs = new Object[] {zeroDouble()};
         } else if (Nd4j.dataType() == DataBuffer.Type.FLOAT) {
-            this.extraArgs = new Object[]{zeroFloat()};
+            this.extraArgs = new Object[] {zeroFloat()};
         } else if (Nd4j.dataType() == DataBuffer.Type.HALF) {
-            this.extraArgs = new Object[]{zeroHalf()};
+            this.extraArgs = new Object[] {zeroHalf()};
         }
     }
 
@@ -202,7 +261,7 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     @Override
     public double getAndSetFinalResult(double accum) {
         this.finalResult = accum;
-        if(z() != null && z.isScalar()) {
+        if (z() != null && z.isScalar()) {
             z.assign(accum);
         }
         return accum;
@@ -211,7 +270,7 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     @Override
     public float getAndSetFinalResult(float accum) {
         this.finalResult = accum;
-        if(z() != null && z.isScalar()) {
+        if (z() != null && z.isScalar()) {
             z.assign(accum);
         }
         return accum;
@@ -241,7 +300,7 @@ public abstract class BaseAccumulation extends BaseOp implements Accumulation {
     @Override
     public void setFinalResult(Number number) {
         this.finalResult = number;
-        if(z() != null && z.isScalar()) {
+        if (z() != null && z.isScalar()) {
             z.assign(number);
         }
     }

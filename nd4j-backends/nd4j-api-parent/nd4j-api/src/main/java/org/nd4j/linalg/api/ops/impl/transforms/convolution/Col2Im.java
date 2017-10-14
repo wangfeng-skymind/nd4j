@@ -1,54 +1,81 @@
 package org.nd4j.linalg.api.ops.impl.transforms.convolution;
 
-import org.nd4j.linalg.api.complex.IComplexNumber;
+import lombok.Builder;
+import lombok.Getter;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.BaseTransformOp;
-import org.nd4j.linalg.api.ops.Op;
+import org.nd4j.linalg.api.ops.DynamicCustomOp;
 import org.nd4j.linalg.factory.Nd4j;
+
+import java.util.List;
 
 /**
  * Created by agibsonccc on 3/9/16.
  */
-public class Col2Im extends BaseTransformOp {
-    private int sy = 0, sx = 0, ph = 0, pw = 0, h = 0, w = 0;
+@Getter
+public class Col2Im extends DynamicCustomOp {
+    private int sy = 0, sx = 0, ph = 0, pw = 0, h = 0, w = 0, dh, dw;
     private boolean isSameMode = false;
 
-    public Col2Im() {}
 
-    public Col2Im(INDArray x, int sy, int sx, int ph, int pw, int h, int w) {
-        this(x, sy, sx, ph, pw, h, w, false, getNewOutputArray(x, h, w));
-    }
 
-    public Col2Im(INDArray x, int sy, int sx, int ph, int pw, int h, int w, boolean isSameMode, INDArray z) {
-        super(x);
+    @Builder(builderMethodName = "sameDiffBuilder")
+    public Col2Im(SameDiff sameDiff, DifferentialFunction[] inputs,boolean inPlace, int sy, int sx, int ph, int pw, int h, int w, int dh, int dw, boolean isSameMode) {
+        super(null,sameDiff, inputs, inPlace);
         this.sy = sy;
         this.sx = sx;
         this.ph = ph;
         this.pw = pw;
         this.h = h;
         this.w = w;
-        this.z = z;
+        this.dh = dh;
+        this.dw = dw;
         this.isSameMode = isSameMode;
-        extraArgs = this.extraArgs();
+        getIArguments().add(h);
+        getIArguments().add(w);
+        getIArguments().add(sy);
+        getIArguments().add(sx);
+        getIArguments().add(ph);
+        getIArguments().add(pw);
+        getIArguments().add(dh);
+        getIArguments().add(dw);
+        getIArguments().add(fromBoolean(isSameMode));
     }
 
-    @Override
-    public boolean isExecSpecial() {
-        return true;
+
+    public Col2Im() {}
+
+    public Col2Im(INDArray[] x, int sy, int sx, int ph, int pw, int h, int w, int dh, int dw) {
+        this(x,new INDArray[]{getNewOutputArray(x[0],h,w)}, sy, sx, ph, pw, h, w, dh, dw, false);
+
     }
 
-    @Override
-    public Object[] extraArgs() {
-        return new Object[] {sx, sy, pw, ph, h, w, isSameMode ? 1.0 : 0.0};
+    @Builder(builderMethodName = "execBuilder")
+    public Col2Im(INDArray[] x, INDArray[] z,int sy, int sx, int ph, int pw, int h, int w, int dh, int dw, boolean isSameMode) {
+        super(null,x,z);
+        getIArguments().add(h);
+        getIArguments().add(w);
+        getIArguments().add(sy);
+        getIArguments().add(sx);
+        getIArguments().add(ph);
+        getIArguments().add(pw);
+        getIArguments().add(dh);
+        getIArguments().add(dw);
+        getIArguments().add(fromBoolean(isSameMode));
+        this.h = h;
+        this.w = w;
+        this.sy = sy;
+        this.sx = sx;
+        this.ph = ph;
+        this.pw = pw;
+        this.dh = dh;
+        this.dw = dw;
+        this.isSameMode = isSameMode;
     }
 
-    @Override
-    public int opNum() {
-        return 36;
-    }
-
-    @Override
-    public String name() {
+      @Override
+    public String opName() {
         return "col2im";
     }
 
@@ -61,53 +88,9 @@ public class Col2Im extends BaseTransformOp {
         return Nd4j.create(n, c, imgHeight, imgWidth);
     }
 
-    @Override
-    public IComplexNumber op(IComplexNumber origin, double other) {
-        return null;
-    }
 
     @Override
-    public IComplexNumber op(IComplexNumber origin, float other) {
-        return null;
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin, IComplexNumber other) {
-        return null;
-    }
-
-    @Override
-    public float op(float origin, float other) {
-        return 0;
-    }
-
-    @Override
-    public double op(double origin, double other) {
-        return 0;
-    }
-
-    @Override
-    public double op(double origin) {
-        return 0;
-    }
-
-    @Override
-    public float op(float origin) {
-        return 0;
-    }
-
-    @Override
-    public IComplexNumber op(IComplexNumber origin) {
-        return null;
-    }
-
-    @Override
-    public Op opForDimension(int index, int dimension) {
-        return null;
-    }
-
-    @Override
-    public Op opForDimension(int index, int... dimension) {
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
         return null;
     }
 }

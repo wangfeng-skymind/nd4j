@@ -18,13 +18,8 @@ public class NoOp implements IUpdater {
     }
 
     @Override
-    public void applySchedules(int iteration, double newLearningRate) {
-
-    }
-
-    @Override
     public GradientUpdater instantiate(INDArray viewArray, boolean initializeViewArray) {
-        if(viewArray != null){
+        if (viewArray != null) {
             throw new IllegalStateException("Cannot use view array with NoOp updater");
         }
         return new NoOpUpdater(this);
@@ -33,5 +28,10 @@ public class NoOp implements IUpdater {
     @Override
     public NoOp clone() {
         return new NoOp();
+    }
+
+    @Override
+    public double getLearningRate(int iteration, int epoch) {
+        return Double.NaN;  //No LR
     }
 }

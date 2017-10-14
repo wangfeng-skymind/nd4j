@@ -60,21 +60,22 @@ public class AdaMaxUpdater implements GradientUpdater<AdaMax> {
      * @return the gradient
      */
     @Override
-    public void applyUpdater(INDArray gradient, int iteration) {
+    public void applyUpdater(INDArray gradient, int iteration, int epoch) {
         if (m == null || u == null)
             throw new IllegalStateException("Updater has not been initialized with view state");
 
         //m = B_1 * m + (1-B_1)*grad
-        m.muli(config.getBeta1()).addi(gradient.mul(1-config.getBeta1()));
+        m.muli(config.getBeta1()).addi(gradient.mul(1 - config.getBeta1()));
 
         //u = max(B_2 * u, |grad|)
         u.muli(config.getBeta2());
-        Transforms.abs(gradient,false);   //In-place should be OK here, original gradient values aren't used again later
-        Nd4j.getExecutioner().exec(new Max(u,gradient,u,u.length()));
+        Transforms.abs(gradient, false); //In-place should be OK here, original gradient values aren't used again later
+        Nd4j.getExecutioner().exec(new Max(u, gradient, u, u.length()));
 
         double beta1t = FastMath.pow(config.getBeta1(), iteration + 1);
 
-        double alphat = config.getLearningRate() / (1.0 - beta1t);
+        double learningRate = config.getLearningRate(iteration, epoch);
+        double alphat = learningRate / (1.0 - beta1t);
         if (Double.isNaN(alphat) || Double.isInfinite(alphat) || alphat == 0.0) {
             alphat = config.getEpsilon();
         }

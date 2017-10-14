@@ -20,10 +20,13 @@
 package org.nd4j.linalg.api.ops.impl.scalar;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseScalarOp;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Scalar max operation.
@@ -131,9 +134,14 @@ public class ScalarMax extends BaseScalarOp {
     public void init(INDArray x, INDArray y, INDArray z, long n) {
         super.init(x, y, z, n);
         if (num != null)
-            this.extraArgs = new Object[] {num};
+            this.extraArgs = new Object[]{num};
         else
-            this.extraArgs = new Object[] {complexNumber};
+            this.extraArgs = new Object[]{complexNumber};
 
+    }
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        throw new UnsupportedOperationException();
     }
 }

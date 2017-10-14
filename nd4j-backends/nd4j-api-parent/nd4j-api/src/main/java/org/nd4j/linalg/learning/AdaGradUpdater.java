@@ -48,7 +48,7 @@ public class AdaGradUpdater implements GradientUpdater<AdaGrad> {
 
     private AdaGrad config;
 
-    public AdaGradUpdater(AdaGrad config){
+    public AdaGradUpdater(AdaGrad config) {
         this.config = config;
     }
 
@@ -76,11 +76,11 @@ public class AdaGradUpdater implements GradientUpdater<AdaGrad> {
      * @param iteration
      */
     @Override
-    public void applyUpdater(INDArray gradient, int iteration) {
+    public void applyUpdater(INDArray gradient, int iteration, int epoch) {
         if (historicalGradient == null)
             throw new IllegalStateException("Updater has not been initialized with view state");
 
-        double learningRate = config.getLearningRate();
+        double learningRate = config.getLearningRate(iteration, epoch);
         double epsilon = config.getEpsilon();
 
         historicalGradient.addi(gradient.mul(gradient));

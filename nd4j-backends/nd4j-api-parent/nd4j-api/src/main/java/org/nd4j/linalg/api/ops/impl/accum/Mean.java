@@ -19,9 +19,14 @@
 
 package org.nd4j.linalg.api.ops.impl.accum;
 
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Calculate the mean of the vector
@@ -29,6 +34,13 @@ import org.nd4j.linalg.api.ops.Op;
  * @author Adam Gibson
  */
 public class Mean extends Sum {
+    public Mean(SameDiff sameDiff, DifferentialFunction i_v, int[] dimensions) {
+        super(sameDiff, i_v, dimensions);
+    }
+
+    public Mean(SameDiff sameDiff, DifferentialFunction i_v, DifferentialFunction i_v2, int[] dimensions) {
+        super(sameDiff, i_v, i_v2, dimensions);
+    }
 
     public Mean() {}
 
@@ -134,5 +146,17 @@ public class Mean extends Sum {
     public IComplexNumber getAndSetFinalResult(IComplexNumber accum) {
         finalResultComplex = accum.div(n());
         return finalResultComplex;
+    }
+
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v1) {
+        validateDifferentialFunctionsameDiff(i_v1);
+        DifferentialFunction ret = f().div(f().doRepeat(this,i_v1.get(0),dimensions),
+                f().mul(f().one(i_v1.get(0).getResultShape()),
+                        f().getInputLength(i_v1.get(0))));
+
+        return Collections.singletonList(ret);
     }
 }

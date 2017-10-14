@@ -20,10 +20,14 @@
 package org.nd4j.linalg.api.ops.impl.accum;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.BaseAccumulation;
 import org.nd4j.linalg.api.ops.Op;
+
+import java.util.List;
 
 /**
  * Non-normalized Shannon Entropy Op - returns the entropy (information gain, or uncertainty of a random variable).
@@ -31,6 +35,13 @@ import org.nd4j.linalg.api.ops.Op;
  * @author raver119@gmail.com
  */
 public class ShannonEntropy extends BaseAccumulation {
+    public ShannonEntropy(SameDiff sameDiff, DifferentialFunction i_v, int[] dimensions) {
+        super(sameDiff, i_v, dimensions);
+    }
+
+    public ShannonEntropy(SameDiff sameDiff, DifferentialFunction i_v, DifferentialFunction i_v2, int[] dimensions) {
+        super(sameDiff, i_v, i_v2, dimensions);
+    }
 
     public ShannonEntropy() {}
 
@@ -154,7 +165,8 @@ public class ShannonEntropy extends BaseAccumulation {
         INDArray xAlongDimension = x.vectorAlongDimension(index, dimension);
 
         if (y() != null)
-            return new ShannonEntropy(xAlongDimension, y.vectorAlongDimension(index, dimension), xAlongDimension.length());
+            return new ShannonEntropy(xAlongDimension, y.vectorAlongDimension(index, dimension),
+                            xAlongDimension.length());
         else
             return new ShannonEntropy(xAlongDimension);
 
@@ -165,8 +177,15 @@ public class ShannonEntropy extends BaseAccumulation {
         INDArray xAlongDimension = x.tensorAlongDimension(index, dimension);
 
         if (y() != null)
-            return new ShannonEntropy(xAlongDimension, y.tensorAlongDimension(index, dimension), xAlongDimension.length());
+            return new ShannonEntropy(xAlongDimension, y.tensorAlongDimension(index, dimension),
+                            xAlongDimension.length());
         else
             return new ShannonEntropy(xAlongDimension);
+    }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> f1) {
+        return null;
     }
 }

@@ -29,15 +29,18 @@ import org.nd4j.linalg.api.ops.*;
  */
 public interface OpFactory {
 
+    GradientOp createGradientOp(String name, INDArray x, INDArray y, INDArray z);
+
     /**
      *
      *
      * @param name
      * @param x
      * @param z
+     * @param extraArgs
      * @return
      */
-    Op createShape(String name, INDArray x, INDArray z);
+    Op createShape(String name, INDArray x, INDArray z, Object[] extraArgs);
 
     /**
      * Create a loss function with the given inputs and outputs
@@ -99,7 +102,6 @@ public interface OpFactory {
 
 
 
-
     /**
      *
      * @param name
@@ -158,8 +160,7 @@ public interface OpFactory {
      * @return-m 'add more scalar ops' -a
      * git push or
      */
-    TransformOp createTransform(String name, INDArray x, INDArray y, INDArray z,Object[] extraArgs);
-
+    TransformOp createTransform(String name, INDArray x, INDArray y, INDArray z, Object[] extraArgs);
 
 
 
@@ -213,7 +214,6 @@ public interface OpFactory {
 
 
 
-
     /** Create a vector operation
      *
      * @param name Name of the vector op
@@ -235,7 +235,8 @@ public interface OpFactory {
      * @param dimension
      * @return
      */
-    BroadcastOp createBroadcastOp(String name, INDArray x, INDArray y, INDArray z, Object[] extraArgs, int... dimension);
+    BroadcastOp createBroadcastOp(String name, INDArray x, INDArray y, INDArray z, Object[] extraArgs,
+                    int... dimension);
 
     /** Create a vector operation
      *
@@ -247,4 +248,26 @@ public interface OpFactory {
      */
     BroadcastOp createBroadcastOp(String name, INDArray x, INDArray z, int... dimension);
 
+    /**
+     * This method returns op id number for given opName
+     *
+     * @return
+     */
+    int getOpNumByName(String opName);
+
+    /**
+     * This method returns op id number if opName exists, or -1 otherwise
+     *
+     * @param opName
+     * @return
+     */
+    int getOpNumIfExists(String opName);
+
+
+    /**
+     * This method returns Op instance if opName exists, null otherwise
+     * @param opName
+     * @return
+     */
+    Op getOpByName(String opName);
 }

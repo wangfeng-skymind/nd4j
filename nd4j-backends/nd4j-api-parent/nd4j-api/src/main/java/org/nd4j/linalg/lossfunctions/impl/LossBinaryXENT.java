@@ -2,6 +2,9 @@ package org.nd4j.linalg.lossfunctions.impl;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
+import org.nd4j.linalg.api.ops.CustomOp;
+import org.nd4j.linalg.api.ops.DynamicCustomOp;
 import org.nd4j.linalg.primitives.Pair;
 import org.nd4j.linalg.activations.IActivation;
 import org.nd4j.linalg.activations.impl.ActivationSoftmax;
@@ -15,6 +18,7 @@ import org.nd4j.linalg.lossfunctions.serde.RowVectorDeserializer;
 import org.nd4j.linalg.lossfunctions.serde.RowVectorSerializer;
 import org.nd4j.linalg.ops.transforms.Transforms;
 import org.nd4j.shade.jackson.annotation.JsonInclude;
+import org.nd4j.shade.jackson.annotation.JsonProperty;
 import org.nd4j.shade.jackson.databind.annotation.JsonDeserialize;
 import org.nd4j.shade.jackson.databind.annotation.JsonSerialize;
 
@@ -28,12 +32,15 @@ import org.nd4j.shade.jackson.databind.annotation.JsonSerialize;
  */
 @EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Getter
+@Getter @Setter
 public class LossBinaryXENT implements ILossFunction {
+    public static final double DEFAULT_CLIPPING_EPSILON = 1e-5;
 
     @JsonSerialize(using = RowVectorSerializer.class)
     @JsonDeserialize(using = RowVectorDeserializer.class)
     private final INDArray weights;
+
+    private double clipEps;
 
     public LossBinaryXENT() {
         this(null);
@@ -49,22 +56,51 @@ public class LossBinaryXENT implements ILossFunction {
      * @param weights Weights array (row vector). May be null.
      */
     public LossBinaryXENT(INDArray weights) {
+        this(DEFAULT_CLIPPING_EPSILON, weights);
+    }
+
+    /**
+     * Binary cross entropy where each the output is
+     * (optionally) weighted/scaled by a fixed scalar value.
+     * Note that the weights array must be a row vector, of length equal to
+     * the labels/output dimension 1 size.
+     * A weight vector of 1s should give identical results to no weight vector.
+     *
+     * @param clipEps Epsilon value for clipping. Probabilities are clipped in range of [eps, 1-eps]. Default eps: 1e-5
+     */
+    public LossBinaryXENT(double clipEps){
+        this(clipEps, null);
+    }
+
+    /**
+     * Binary cross entropy where each the output is
+     * (optionally) weighted/scaled by a fixed scalar value.
+     * Note that the weights array must be a row vector, of length equal to
+     * the labels/output dimension 1 size.
+     * A weight vector of 1s should give identical results to no weight vector.
+     *
+     * @param clipEps Epsilon value for clipping. Probabilities are clipped in range of [eps, 1-eps]. Default eps: 1e-5
+     * @param weights Weights array (row vector). May be null.
+     */
+    public LossBinaryXENT(@JsonProperty("clipEps") double clipEps, @JsonProperty("weights") INDArray weights){
         if (weights != null && !weights.isRowVector()) {
             throw new IllegalArgumentException("Weights array must be a row vector");
         }
+        if(clipEps < 0 || clipEps > 0.5){
+            throw new IllegalArgumentException("Invalid clipping epsilon value: epsilon should be >= 0 (but near zero)."
+                    + "Got: " + clipEps);
+        }
 
+        this.clipEps = clipEps;
         this.weights = weights;
     }
 
-    private INDArray scoreArray(INDArray labels,
-                                INDArray preOutput,
-                                IActivation activationFn,
-                                INDArray mask) {
+    private INDArray scoreArray(INDArray labels, INDArray preOutput, IActivation activationFn, INDArray mask) {
 
         if (labels.size(1) != preOutput.size(1)) {
-            throw new IllegalArgumentException("Labels array numColumns (size(1) = " + labels.size(1)
-                    + ") does not match output layer" + " number of outputs (nOut = " + preOutput.size(1)
-                    + ") ");
+            throw new IllegalArgumentException(
+                            "Labels array numColumns (size(1) = " + labels.size(1) + ") does not match output layer"
+                                            + " number of outputs (nOut = " + preOutput.size(1) + ") ");
         }
 
         INDArray scoreArr;
@@ -76,6 +112,14 @@ public class LossBinaryXENT implements ILossFunction {
         } else {
             //INDArray output = Nd4j.getExecutioner().execAndReturn(Nd4j.getOpFactory().createTransform(activationFn, preOutput.dup()));
             INDArray output = activationFn.getActivation(preOutput.dup(), true);
+            if (clipEps > 0.0) {
+                CustomOp op = DynamicCustomOp.builder("clipbyvalue")
+                        .addInputs(output)
+                        .callInplace(true)
+                        .addFloatingPointArguments(clipEps, 1.0-clipEps)
+                        .build();
+                Nd4j.getExecutioner().exec(op);
+            }
             scoreArr = Transforms.log(output, true).muli(labels);
             INDArray secondTerm = output.rsubi(1);
             Transforms.log(secondTerm, false);
@@ -87,7 +131,7 @@ public class LossBinaryXENT implements ILossFunction {
         if (weights != null) {
             if (weights.length() != preOutput.size(1)) {
                 throw new IllegalStateException("Weights vector (length " + weights.length()
-                        + ") does not match output.size(1)=" + preOutput.size(1));
+                                + ") does not match output.size(1)=" + preOutput.size(1));
             }
 
             scoreArr.muliRowVector(weights);
@@ -100,11 +144,8 @@ public class LossBinaryXENT implements ILossFunction {
     }
 
     @Override
-    public double computeScore(INDArray labels,
-                               INDArray preOutput,
-                               IActivation activationFn,
-                               INDArray mask,
-                               boolean average) {
+    public double computeScore(INDArray labels, INDArray preOutput, IActivation activationFn, INDArray mask,
+                    boolean average) {
 
         INDArray scoreArr = scoreArray(labels, preOutput, activationFn, mask);
 
@@ -118,38 +159,36 @@ public class LossBinaryXENT implements ILossFunction {
     }
 
     @Override
-    public INDArray computeScoreArray(INDArray labels,
-                                      INDArray preOutput,
-                                      IActivation activationFn,
-                                      INDArray mask) {
+    public INDArray computeScoreArray(INDArray labels, INDArray preOutput, IActivation activationFn, INDArray mask) {
 
-        INDArray scoreArr = scoreArray(
-                labels,
-                preOutput,
-                activationFn,
-                mask);
+        INDArray scoreArr = scoreArray(labels, preOutput, activationFn, mask);
         return scoreArr.sum(1).muli(-1);
     }
 
     @Override
-    public INDArray computeGradient(INDArray labels,
-                                    INDArray preOutput,
-                                    IActivation activationFn,
-                                    INDArray mask) {
+    public INDArray computeGradient(INDArray labels, INDArray preOutput, IActivation activationFn, INDArray mask) {
 
         if (labels.size(1) != preOutput.size(1)) {
-            throw new IllegalArgumentException("Labels array numColumns (size(1) = " + labels.size(1)
-                    + ") does not match output layer" + " number of outputs (nOut = " + preOutput.size(1)
-                    + ") ");
+            throw new IllegalArgumentException(
+                            "Labels array numColumns (size(1) = " + labels.size(1) + ") does not match output layer"
+                                            + " number of outputs (nOut = " + preOutput.size(1) + ") ");
         }
 
         INDArray output = activationFn.getActivation(preOutput.dup(), true);
+        if (clipEps > 0.0) {
+            CustomOp op = DynamicCustomOp.builder("clipbyvalue")
+                    .addInputs(output)
+                    .callInplace(true)
+                    .addFloatingPointArguments(clipEps, 1.0-clipEps)
+                    .build();
+            Nd4j.getExecutioner().exec(op);
+        }
 
         INDArray numerator = output.sub(labels);
-        INDArray denominator = Nd4j.getExecutioner().execAndReturn(new TimesOneMinus(output));  // output * (1-output)
+        INDArray denominator = Nd4j.getExecutioner().execAndReturn(new TimesOneMinus(output)); // output * (1-output)
         INDArray dLda = numerator.divi(denominator);
 
-        if(mask != null && LossUtil.isPerOutputMasking(dLda, mask)) {
+        if (mask != null && LossUtil.isPerOutputMasking(dLda, mask)) {
             //For *most* activation functions: we don't actually need to mask dL/da in addition to masking dL/dz later
             //but: some, like softmax, require both (due to dL/dz_i being a function of dL/da_j, for i != j)
             //We could add a special case for softmax (activationFn instanceof ActivationSoftmax) but that would be
@@ -163,7 +202,7 @@ public class LossBinaryXENT implements ILossFunction {
         if (weights != null) {
             if (weights.length() != output.size(1)) {
                 throw new IllegalStateException("Weights vector (length " + weights.length()
-                        + ") does not match output.size(1)=" + output.size(1));
+                                + ") does not match output.size(1)=" + output.size(1));
             }
 
             grad.muliRowVector(weights);
@@ -178,20 +217,11 @@ public class LossBinaryXENT implements ILossFunction {
 
     @Override
     public Pair<Double, INDArray> computeGradientAndScore(INDArray labels, INDArray preOutput, IActivation activationFn,
-                                                          INDArray mask, boolean average) {
+                    INDArray mask, boolean average) {
         //TODO: probably a more efficient way to do this...
 
-        return new Pair<>(
-                computeScore(
-                labels,
-                preOutput,
-                activationFn,
-                mask,
-                average),
-                computeGradient(labels,
-                        preOutput,
-                        activationFn,
-                        mask));
+        return new Pair<>(computeScore(labels, preOutput, activationFn, mask, average),
+                        computeGradient(labels, preOutput, activationFn, mask));
     }
 
     /**

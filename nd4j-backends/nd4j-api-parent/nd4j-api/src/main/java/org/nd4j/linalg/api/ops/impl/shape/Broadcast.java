@@ -20,18 +20,33 @@
 package org.nd4j.linalg.api.ops.impl.shape;
 
 import org.apache.commons.math3.util.FastMath;
+import org.nd4j.autodiff.functions.DifferentialFunction;
+import org.nd4j.autodiff.samediff.SameDiff;
 import org.nd4j.linalg.api.complex.IComplexNumber;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.Op;
 import org.nd4j.linalg.api.ops.ShapeOp;
 import org.nd4j.linalg.util.ComplexUtil;
 
+import java.util.List;
+
 /**
- * Transpose function
+ * Broadcast function
  *
  * @author Adam Gibson
  */
 public class Broadcast extends ShapeOp {
+    private int[] shape;
+
+    public Broadcast(SameDiff sameDiff, int[] shape) {
+        super(sameDiff);
+        this.shape = shape;
+    }
+
+    public Broadcast(SameDiff sameDiff, DifferentialFunction i_v, int[] shape) {
+        super(sameDiff, i_v, false);
+        this.shape = shape;
+    }
 
     public Broadcast() {}
 
@@ -49,6 +64,36 @@ public class Broadcast extends ShapeOp {
 
     public Broadcast(INDArray x) {
         super(x);
+    }
+
+    @Override
+    public void exec(int... dimensions) {
+        exec();
+    }
+
+    @Override
+    public boolean isExecSpecial() {
+        return true;
+    }
+
+    @Override
+    public void exec() {
+        int[] permuteDims = extraArgs == null ? z().shape() : (int[]) extraArgs[0];
+        if(x != z) {
+            if(x.isScalar() && !z.isScalar()) {
+                z.assign(x.getDouble(0));
+            }
+            else
+                z.assign(x.broadcast(permuteDims));
+        }
+        else {
+            if(x.isScalar() && !z.isScalar()) {
+                z.assign(x.getDouble(0));
+            }
+            else
+                this.z = x.broadcast(permuteDims);
+        }
+
     }
 
 
@@ -108,16 +153,13 @@ public class Broadcast extends ShapeOp {
 
         if (y() != null)
             return new Broadcast(xAlongDimension, y.vectorAlongDimension(index, dimension),
-                            z.vectorAlongDimension(index, dimension), xAlongDimension.length());
+                    z.vectorAlongDimension(index, dimension), xAlongDimension.length());
         else
             return new Broadcast(xAlongDimension, z.vectorAlongDimension(index, dimension), xAlongDimension.length());
 
     }
 
-    @Override
-    public INDArray z() {
-        return x().transpose();
-    }
+
 
     @Override
     public Op opForDimension(int index, int... dimension) {
@@ -125,9 +167,20 @@ public class Broadcast extends ShapeOp {
 
         if (y() != null)
             return new Broadcast(xAlongDimension, y.tensorAlongDimension(index, dimension),
-                            z.tensorAlongDimension(index, dimension), xAlongDimension.length());
+                    z.tensorAlongDimension(index, dimension), xAlongDimension.length());
         else
             return new Broadcast(xAlongDimension, z.tensorAlongDimension(index, dimension), xAlongDimension.length());
 
+    }
+
+    @Override
+    public int[] getResultShape() {
+        return shape;
+    }
+
+
+    @Override
+    public List<DifferentialFunction> doDiff(List<DifferentialFunction> i_v) {
+        throw new UnsupportedOperationException();
     }
 }
